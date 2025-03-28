@@ -1,0 +1,9 @@
+title: Ontology RAG Demo
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.44.0
+app_file: app.py
+pinned: true
+license: mit

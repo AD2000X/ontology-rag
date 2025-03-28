@@ -1,0 +1,771 @@
+{
+    "rules": [
+      {
+        "id": "rule9",
+        "description": "Critical support tickets must be assigned to Senior employees or managers",
+        "constraint": "FORALL ?t WHERE type(?t, SupportTicket) AND property(?t, priority, 'Critical') AND relationship(?t, assignedTo, ?e) MUST type(?e, Manager) OR (type(?e, Employee) AND property(?e, experienceLevel, 'Senior'))"
+      },
+      {
+        "id": "rule10",
+        "description": "Project end date must be after its start date",
+        "constraint": "FORALL ?p WHERE type(?p, Project) AND property(?p, startDate, ?start) AND property(?p, endDate, ?end) MUST date(?end) > date(?start)"
+      }
+    ],
+    "classes": {
+      "FinancialEntity": {
+        "description": "An entity related to financial matters",
+        "subClassOf": "Entity",
+        "properties": ["amount", "currency", "fiscalYear", "quarter", "transactionDate"]
+      },
+      
+      "Budget": {
+        "description": "A financial plan for a specified period",
+        "subClassOf": "FinancialEntity",
+        "properties": ["budgetId", "period", "departmentId", "plannedAmount", "actualAmount", "variance"]
+      },
+      
+      "Revenue": {
+        "description": "Income generated from business activities",
+        "subClassOf": "FinancialEntity",
+        "properties": ["revenueId", "source", "productId", "recurring", "oneTime", "revenueType"]
+      },
+      
+      "Expense": {
+        "description": "Cost incurred in business operations",
+        "subClassOf": "FinancialEntity",
+        "properties": ["expenseId", "category", "department", "approvedBy", "paymentStatus", "receiptUrl"]
+      },
+      
+      "Asset": {
+        "description": "A resource with economic value",
+        "subClassOf": "Entity",
+        "properties": ["assetId", "acquisitionDate", "value", "depreciationSchedule", "currentValue", "location"]
+      },
+      
+      "PhysicalAsset": {
+        "description": "A tangible asset with physical presence",
+        "subClassOf": "Asset",
+        "properties": ["serialNumber", "manufacturer", "model", "maintenanceSchedule", "condition"]
+      },
+      
+      "DigitalAsset": {
+        "description": "An intangible digital asset",
+        "subClassOf": "Asset",
+        "properties": ["fileType", "storageLocation", "accessControl", "backupStatus", "version"]
+      },
+      
+      "IntellectualProperty": {
+        "description": "Legal rights resulting from intellectual activity",
+        "subClassOf": "Asset",
+        "properties": ["ipType", "filingDate", "grantDate", "jurisdiction", "inventors", "expirationDate"]
+      },
+      
+      "Location": {
+        "description": "A physical or virtual place",
+        "subClassOf": "Entity",
+        "properties": ["locationId", "address", "city", "state", "country", "postalCode", "geoCoordinates"]
+      },
+      
+      "Facility": {
+        "description": "A physical building or site owned or operated by the organization",
+        "subClassOf": "Location",
+        "properties": ["facilityType", "squareFootage", "capacity", "operatingHours", "amenities", "securityLevel"]
+      },
+      
+      "VirtualLocation": {
+        "description": "A digital space or environment",
+        "subClassOf": "Location",
+        "properties": ["url", "accessMethod", "hostingProvider", "virtualEnvironmentType", "availabilityStatus"]
+      },
+      
+      "Market": {
+        "description": "A geographic or demographic target for products and services",
+        "subClassOf": "Entity",
+        "properties": ["marketId", "name", "geography", "demographics", "size", "growth", "competitiveIntensity"]
+      },
+      
+      "GeographicMarket": {
+        "description": "A market defined by geographic boundaries",
+        "subClassOf": "Market",
+        "properties": ["region", "countries", "languages", "regulations", "culturalFactors"]
+      },
+      
+      "DemographicMarket": {
+        "description": "A market defined by demographic characteristics",
+        "subClassOf": "Market",
+        "properties": ["ageRange", "income", "education", "occupation", "familyStatus", "interests"]
+      },
+      
+      "BusinessMarket": {
+        "description": "A market consisting of business customers",
+        "subClassOf": "Market",
+        "properties": ["industryFocus", "companySize", "businessModel", "decisionMakers", "purchasingCriteria"]
+      },
+      
+      "Campaign": {
+        "description": "A coordinated series of marketing activities",
+        "subClassOf": "Entity",
+        "properties": ["campaignId", "name", "objective", "startDate", "endDate", "budget", "targetAudience", "channels"]
+      },
+      
+      "DigitalCampaign": {
+        "description": "A marketing campaign conducted through digital channels",
+        "subClassOf": "Campaign",
+        "properties": ["platforms", "contentTypes", "keywords", "tracking", "analytics", "automationWorkflows"]
+      },
+      
+      "TraditionalCampaign": {
+        "description": "A marketing campaign conducted through traditional media",
+        "subClassOf": "Campaign",
+        "properties": ["mediaTypes", "adSizes", "placementSchedule", "production", "distributionMethod"]
+      },
+      
+      "IntegratedCampaign": {
+        "description": "A campaign that spans multiple marketing channels",
+        "subClassOf": "Campaign",
+        "properties": ["channelMix", "messageConsistency", "crossChannelMetrics", "customerJourneyMap"]
+      },
+      
+      "Process": {
+        "description": "A defined set of activities to accomplish a specific objective",
+        "subClassOf": "Entity",
+        "properties": ["processId", "name", "purpose", "owner", "inputs", "outputs", "steps", "metrics"]
+      },
+      
+      "BusinessProcess": {
+        "description": "A process for conducting business operations",
+        "subClassOf": "Process",
+        "properties": ["businessFunction", "criticality", "maturityLevel", "automationLevel", "regulatoryRequirements"]
+      },
+      
+      "DevelopmentProcess": {
+        "description": "A process for developing products or services",
+        "subClassOf": "Process",
+        "properties": ["methodology", "phases", "deliverables", "qualityGates", "tools", "repositories"]
+      },
+      
+      "SupportProcess": {
+        "description": "A process for supporting customers or internal users",
+        "subClassOf": "Process",
+        "properties": ["serviceLevel", "escalationPath", "knowledgeBase", "ticketingSystem", "supportHours"]
+      },
+      
+      "Skill": {
+        "description": "A learned capacity to perform a task",
+        "subClassOf": "Entity",
+        "properties": ["skillId", "name", "category", "proficiencyLevels", "certifications", "learningResources"]
+      },
+      
+      "TechnicalSkill": {
+        "description": "A skill related to technology or technical processes",
+        "subClassOf": "Skill",
+        "properties": ["techCategory", "tools", "languages", "frameworks", "platforms", "compatibility"]
+      },
+      
+      "SoftSkill": {
+        "description": "An interpersonal or non-technical skill",
+        "subClassOf": "Skill",
+        "properties": ["interpersonalArea", "communicationAspects", "leadershipComponents", "adaptabilityMetrics"]
+      },
+      
+      "DomainSkill": {
+        "description": "Knowledge and expertise in a specific business domain",
+        "subClassOf": "Skill",
+        "properties": ["domain", "industrySpecific", "regulations", "bestPractices", "domainTerminology"]
+      },
+      
+      "Objective": {
+        "description": "A goal or target to be achieved",
+        "subClassOf": "Entity",
+        "properties": ["objectiveId", "name", "description", "targetDate", "status", "priority", "owner", "metrics"]
+      },
+      
+      "StrategicObjective": {
+        "description": "A high-level, long-term goal",
+        "subClassOf": "Objective",
+        "properties": ["strategyAlignment", "timeframe", "impactAreas", "successIndicators", "boardApproval"]
+      },
+      
+      "TacticalObjective": {
+        "description": "A medium-term goal supporting strategic objectives",
+        "subClassOf": "Objective",
+        "properties": ["parentObjective", "implementationPlan", "resourceRequirements", "dependencies", "milestones"]
+      },
+      
+      "OperationalObjective": {
+        "description": "A short-term, specific goal supporting tactical objectives",
+        "subClassOf": "Objective",
+        "properties": ["parentTacticalObjective", "assignedTeam", "dailyActivities", "progressTracking", "completionCriteria"]
+      },
+      
+      "KPI": {
+        "description": "Key Performance Indicator for measuring success",
+        "subClassOf": "Entity",
+        "properties": ["kpiId", "name", "description", "category", "unit", "formula", "target", "actual", "frequency"]
+      },
+      
+      "FinancialKPI": {
+        "description": "KPI measuring financial performance",
+        "subClassOf": "KPI",
+        "properties": ["financialCategory", "accountingStandard", "auditRequirement", "forecastAccuracy"]
+      },
+      
+      "CustomerKPI": {
+        "description": "KPI measuring customer-related performance",
+        "subClassOf": "KPI",
+        "properties": ["customerSegment", "touchpoint", "journeyStage", "sentimentConnection", "loyaltyImpact"]
+      },
+      
+      "OperationalKPI": {
+        "description": "KPI measuring operational efficiency",
+        "subClassOf": "KPI",
+        "properties": ["processArea", "qualityDimension", "productivityFactor", "resourceUtilization"]
+      },
+      
+      "Risk": {
+        "description": "A potential event that could negatively impact objectives",
+        "subClassOf": "Entity",
+        "properties": ["riskId", "name", "description", "category", "probability", "impact", "status", "mitigationPlan"]
+      },
+      
+      "FinancialRisk": {
+        "description": "Risk related to financial matters",
+        "subClassOf": "Risk",
+        "properties": ["financialExposure", "currencyFactors", "marketConditions", "hedgingStrategy", "insuranceCoverage"]
+      },
+      
+      "OperationalRisk": {
+        "description": "Risk related to business operations",
+        "subClassOf": "Risk",
+        "properties": ["operationalArea", "processVulnerabilities", "systemDependencies", "staffingFactors", "recoveryPlan"]
+      },
+      
+      "ComplianceRisk": {
+        "description": "Risk related to regulatory compliance",
+        "subClassOf": "Risk",
+        "properties": ["regulations", "jurisdictions", "reportingRequirements", "penaltyExposure", "complianceStatus"]
+      },
+      
+      "Decision": {
+        "description": "A choice made between alternatives",
+        "subClassOf": "Entity",
+        "properties": ["decisionId", "name", "description", "date", "decisionMaker", "alternatives", "selectedOption", "rationale"]
+      },
+      
+      "StrategicDecision": {
+        "description": "A decision affecting long-term direction",
+        "subClassOf": "Decision",
+        "properties": ["strategicImplications", "marketPosition", "competitiveAdvantage", "boardApproval", "communicationPlan"]
+      },
+      
+      "TacticalDecision": {
+        "description": "A decision affecting medium-term operations",
+        "subClassOf": "Decision",
+        "properties": ["operationalImpact", "resourceAllocation", "implementationTimeline", "departmentalScope"]
+      },
+      
+      "OperationalDecision": {
+        "description": "A day-to-day decision in business operations",
+        "subClassOf": "Decision",
+        "properties": ["decisionFrequency", "standardProcedure", "delegationLevel", "auditTrail"]
+      },
+      
+      "Technology": {
+        "description": "A technical capability or system",
+        "subClassOf": "Entity",
+        "properties": ["technologyId", "name", "category", "version", "vendor", "maturityLevel", "supportStatus"]
+      },
+      
+      "Hardware": {
+        "description": "Physical technological equipment",
+        "subClassOf": "Technology",
+        "properties": ["specifications", "formFactor", "powerRequirements", "connectivity", "lifecycle", "replacementSchedule"]
+      },
+      
+      "Software": {
+        "description": "Computer programs and applications",
+        "subClassOf": "Technology",
+        "properties": ["programmingLanguage", "operatingSystem", "architecture", "apiDocumentation", "licensingModel", "updateFrequency"]
+      },
+      
+      "Infrastructure": {
+        "description": "Foundational technology systems",
+        "subClassOf": "Technology",
+        "properties": ["deploymentModel", "scalability", "redundancy", "securityFeatures", "complianceCertifications", "capacityMetrics"]
+      },
+      
+      "SecurityEntity": {
+        "description": "An entity related to security measures",
+        "subClassOf": "Entity",
+        "properties": ["securityId", "name", "type", "implementationDate", "lastReview", "responsibleParty", "status"]
+      },
+      
+      "SecurityControl": {
+        "description": "A measure to mitigate security risks",
+        "subClassOf": "SecurityEntity",
+        "properties": ["controlCategory", "protectedAssets", "implementationLevel", "automationDegree", "verificationMethod", "exceptions"]
+      },
+      
+      "SecurityIncident": {
+        "description": "An event that compromises security",
+        "subClassOf": "SecurityEntity",
+        "properties": ["incidentDate", "severity", "affectedSystems", "vector", "remediationSteps", "rootCause", "resolution"]
+      },
+      
+      "SecurityPolicy": {
+        "description": "A documented security directive",
+        "subClassOf": "SecurityEntity",
+        "properties": ["policyScope", "requiredControls", "complianceRequirements", "exemptionProcess", "reviewSchedule", "enforcementMechanism"]
+      },
+      
+      "Competency": {
+        "description": "A cluster of related abilities, knowledge, and skills",
+        "subClassOf": "Entity",
+        "properties": ["competencyId", "name", "category", "description", "importance", "requiredProficiency", "assessmentMethod"]
+      },
+      
+      "ManagerialCompetency": {
+        "description": "Competency related to managing people and resources",
+        "subClassOf": "Competency",
+        "properties": ["leadershipAspects", "teamDevelopment", "decisionMaking", "conflictResolution", "changeManagement", "resourceOptimization"]
+      },
+      
+      "TechnicalCompetency": {
+        "description": "Competency related to technical knowledge and skills",
+        "subClassOf": "Competency",
+        "properties": ["technicalDomain", "specializations", "toolProficiency", "problemSolvingApproach", "technicalLeadership", "knowledgeSharing"]
+      },
+      
+      "BusinessCompetency": {
+        "description": "Competency related to business acumen and operations",
+        "subClassOf": "Competency",
+        "properties": ["businessAcumen", "industryKnowledge", "stakeholderManagement", "commercialAwareness", "strategicThinking", "resultsOrientation"]
+      },
+      
+      "Stakeholder": {
+        "description": "An individual or group with interest in or influence over the organization",
+        "subClassOf": "Entity",
+        "properties": ["stakeholderId", "name", "type", "influence", "interest", "expectations", "engagementLevel", "communicationPreference"]
+      },
+      
+      "InternalStakeholder": {
+        "description": "A stakeholder within the organization",
+        "subClassOf": "Stakeholder",
+        "properties": ["department", "role", "decisionAuthority", "projectInvolvement", "changeReadiness", "organizationalTenure"]
+      },
+      
+      "ExternalStakeholder": {
+        "description": "A stakeholder outside the organization",
+        "subClassOf": "Stakeholder",
+        "properties": ["organization", "relationship", "contractualAgreements", "marketInfluence", "externalNetworks", "publicProfile"]
+      },
+      
+      "RegulatoryStakeholder": {
+        "description": "A regulatory body or authority",
+        "subClassOf": "Stakeholder",
+        "properties": ["jurisdiction", "regulations", "enforcementPowers", "reportingRequirements", "auditFrequency", "complianceDeadlines"]
+      }
+    },
+    "relationships": [
+      {
+        "name": "ownedBy",
+        "domain": "Product",
+        "range": "Department",
+        "inverse": "owns",
+        "cardinality": "many-to-one",
+        "description": "Indicates which department owns a product"
+      },
+      {
+        "name": "managedBy",
+        "domain": "Department",
+        "range": "Manager",
+        "inverse": "manages",
+        "cardinality": "one-to-one",
+        "description": "Indicates which manager heads a department"
+      },
+      {
+        "name": "worksOn",
+        "domain": "Employee",
+        "range": "Product",
+        "inverse": "developedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which products an employee works on"
+      },
+      {
+        "name": "purchases",
+        "domain": "Customer",
+        "range": "Product",
+        "inverse": "purchasedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which products a customer has purchased"
+      },
+      {
+        "name": "provides",
+        "domain": "Customer",
+        "range": "Feedback",
+        "inverse": "providedBy",
+        "cardinality": "one-to-many",
+        "description": "Connects customers to their feedback submissions"
+      },
+      {
+        "name": "pertainsTo",
+        "domain": "Feedback",
+        "range": "Product",
+        "inverse": "hasFeedback",
+        "cardinality": "many-to-one",
+        "description": "Indicates which product a feedback item is about"
+      },
+      {
+        "name": "supports",
+        "domain": "Platform",
+        "range": "Product",
+        "inverse": "supportedBy",
+        "cardinality": "one-to-many",
+        "description": "Indicates which products are supported by the platform"
+      },
+      {
+        "name": "hasLifecycle",
+        "domain": "Product",
+        "range": "Lifecycle",
+        "inverse": "lifecycleOf",
+        "cardinality": "one-to-one",
+        "description": "Connects a product to its lifecycle information"
+      },
+      {
+        "name": "oversees",
+        "domain": "Manager",
+        "range": "Employee",
+        "inverse": "reportsToDirect",
+        "cardinality": "one-to-many",
+        "description": "Indicates which employees report to a manager"
+      },
+      {
+        "name": "optimizedBy",
+        "domain": "Product",
+        "range": "Feedback",
+        "inverse": "optimizes",
+        "cardinality": "many-to-many",
+        "description": "Indicates how feedback is used to optimize product development"
+      },
+      {
+        "name": "allocatesTo",
+        "domain": "Budget",
+        "range": "Department",
+        "inverse": "fundedBy",
+        "cardinality": "one-to-many",
+        "description": "Indicates which departments receive budget allocations"
+      },
+      {
+        "name": "generatesRevenue",
+        "domain": "Product",
+        "range": "Revenue",
+        "inverse": "generatedFrom",
+        "cardinality": "one-to-many",
+        "description": "Connects products to the revenue they generate"
+      },
+      {
+        "name": "incursExpense",
+        "domain": "Department",
+        "range": "Expense",
+        "inverse": "incurredBy",
+        "cardinality": "one-to-many",
+        "description": "Connects departments to their expenses"
+      },
+      {
+        "name": "locatedAt",
+        "domain": "PhysicalEntity",
+        "range": "Location",
+        "inverse": "houses",
+        "cardinality": "many-to-one",
+        "description": "Indicates where a physical entity is located"
+      },
+      {
+        "name": "targetedAt",
+        "domain": "Campaign",
+        "range": "Market",
+        "inverse": "targetedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which markets a campaign targets"
+      },
+      {
+        "name": "follows",
+        "domain": "Project",
+        "range": "Process",
+        "inverse": "implementedBy",
+        "cardinality": "many-to-one",
+        "description": "Indicates which process a project follows"
+      },
+      {
+        "name": "requires",
+        "domain": "Role",
+        "range": "Skill",
+        "inverse": "requiredFor",
+        "cardinality": "many-to-many",
+        "description": "Indicates which skills are required for a role"
+      },
+      {
+        "name": "possesses",
+        "domain": "Employee",
+        "range": "Skill",
+        "inverse": "possessedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which skills an employee possesses"
+      },
+      {
+        "name": "measures",
+        "domain": "KPI",
+        "range": "Objective",
+        "inverse": "measuredBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which objectives a KPI measures"
+      },
+      {
+        "name": "affects",
+        "domain": "Risk",
+        "range": "Entity",
+        "inverse": "affectedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which entities are affected by a risk"
+      },
+      {
+        "name": "mitigates",
+        "domain": "SecurityControl",
+        "range": "Risk",
+        "inverse": "mitigatedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which risks are mitigated by a security control"
+      },
+      {
+        "name": "demonstrates",
+        "domain": "Employee",
+        "range": "Competency",
+        "inverse": "demonstratedBy",
+        "cardinality": "many-to-many",
+        "description": "Indicates which competencies an employee demonstrates"
+      },
+      {
+        "name": "influencedBy",
+        "domain": "Decision",
+        "range": "Stakeholder",
+        "inverse": "influences",
+        "cardinality": "many-to-many",
+        "description": "Indicates which stakeholders influence a decision"
+      },
+      {
+        "name": "implementedWith",
+        "domain": "Process",
+        "range": "Technology",
+        "inverse": "supports",
+        "cardinality": "many-to-many",
+        "description": "Indicates which technologies support a process"
+      }
+    ],
+    "instances": [
+      {
+        "id": "product1",
+        "type": "Product",
+        "properties": {
+          "name": "Enterprise Analytics Suite",
+          "version": "2.1",
+          "status": "Active"
+        },
+        "relationships": [
+          {"type": "ownedBy", "target": "dept1"},
+          {"type": "hasLifecycle", "target": "lifecycle1"},
+          {"type": "optimizedBy", "target": "feedback1"}
+        ]
+      },
+      {
+        "id": "product2",
+        "type": "Product",
+        "properties": {
+          "name": "Customer Portal",
+          "version": "1.5",
+          "status": "Active"
+        },
+        "relationships": [
+          {"type": "ownedBy", "target": "dept2"},
+          {"type": "hasLifecycle", "target": "lifecycle2"},
+          {"type": "optimizedBy", "target": "feedback2"}
+        ]
+      },
+      {
+        "id": "dept1",
+        "type": "Department",
+        "properties": {
+          "name": "Engineering",
+          "function": "Product Development"
+        },
+        "relationships": [
+          {"type": "managedBy", "target": "manager1"},
+          {"type": "owns", "target": "product1"}
+        ]
+      },
+      {
+        "id": "dept2",
+        "type": "Department",
+        "properties": {
+          "name": "Marketing",
+          "function": "Customer Engagement"
+        },
+        "relationships": [
+          {"type": "managedBy", "target": "manager2"},
+          {"type": "owns", "target": "product2"}
+        ]
+      },
+      {
+        "id": "manager1",
+        "type": "Manager",
+        "properties": {
+          "name": "Jane Smith",
+          "role": "Engineering Director",
+          "managementLevel": "Director"
+        },
+        "relationships": [
+          {"type": "oversees", "target": "employee1"},
+          {"type": "oversees", "target": "employee2"},
+          {"type": "manages", "target": "dept1"}
+        ]
+      },
+      {
+        "id": "manager2",
+        "type": "Manager",
+        "properties": {
+          "name": "Michael Chen",
+          "role": "Marketing Manager",
+          "managementLevel": "Manager"
+        },
+        "relationships": [
+          {"type": "oversees", "target": "employee3"},
+          {"type": "manages", "target": "dept2"}
+        ]
+      },
+      {
+        "id": "employee1",
+        "type": "Employee",
+        "properties": {
+          "name": "John Doe",
+          "role": "Senior Developer"
+        },
+        "relationships": [
+          {"type": "worksOn", "target": "product1"},
+          {"type": "reportsToDirect", "target": "manager1"}
+        ]
+      },
+      {
+        "id": "employee2",
+        "type": "Employee",
+        "properties": {
+          "name": "Sarah Johnson",
+          "role": "QA Engineer"
+        },
+        "relationships": [
+          {"type": "worksOn", "target": "product1"},
+          {"type": "reportsToDirect", "target": "manager1"}
+        ]
+      },
+      {
+        "id": "employee3",
+        "type": "Employee",
+        "properties": {
+          "name": "David Wilson",
+          "role": "Marketing Specialist"
+        },
+        "relationships": [
+          {"type": "worksOn", "target": "product2"},
+          {"type": "reportsToDirect", "target": "manager2"}
+        ]
+      },
+      {
+        "id": "customer1",
+        "type": "Customer",
+        "properties": {
+          "name": "Acme Corp",
+          "customerSince": "2020-05-15"
+        },
+        "relationships": [
+          {"type": "purchases", "target": "product1"},
+          {"type": "provides", "target": "feedback1"}
+        ]
+      },
+      {
+        "id": "customer2",
+        "type": "Customer",
+        "properties": {
+          "name": "GlobalTech",
+          "customerSince": "2021-03-22"
+        },
+        "relationships": [
+          {"type": "purchases", "target": "product2"},
+          {"type": "provides", "target": "feedback2"}
+        ]
+      },
+      {
+        "id": "feedback1", 
+        "type": "Feedback",
+        "properties": {
+          "date": "2023-09-10",
+          "sentiment": "Positive",
+          "rating": 4.5,
+          "content": "The analytics dashboard is very intuitive and provides excellent insights.",
+          "suggestions": "Would like to see more export options."
+        },
+        "relationships": [
+          {"type": "providedBy", "target": "customer1"},
+          {"type": "pertainsTo", "target": "product1"},
+          {"type": "optimizes", "target": "product1"}
+        ]
+      },
+      {
+        "id": "feedback2", 
+        "type": "Feedback",
+        "properties": {
+          "date": "2023-10-05",
+          "sentiment": "Mixed",
+          "rating": 3.0,
+          "content": "The portal is functional but navigation could be improved.",
+          "suggestions": "Add better navigation and mobile support."
+        },
+        "relationships": [
+          {"type": "providedBy", "target": "customer2"},
+          {"type": "pertainsTo", "target": "product2"},
+          {"type": "optimizes", "target": "product2"}
+        ]
+      },
+      {
+        "id": "lifecycle1",
+        "type": "Lifecycle",
+        "properties": {
+          "currentStage": "Maintenance",
+          "previousStages": ["Development", "Launch"]
+        },
+        "relationships": [
+          {"type": "lifecycleOf", "target": "product1"}
+        ]
+      },
+      {
+        "id": "lifecycle2",
+        "type": "Lifecycle",
+        "properties": {
+          "currentStage": "Growth",
+          "previousStages": ["Development", "Launch"]
+        },
+        "relationships": [
+          {"type": "lifecycleOf", "target": "product2"}
+        ]
+      },
+      {
+        "id": "platform1",
+        "type": "Platform",
+        "properties": {
+          "name": "Product Management System",
+          "version": "3.0",
+          "capabilities": ["Tracking", "Versioning", "Ownership Management"]
+        },
+        "relationships": [
+          {"type": "supports", "target": "product1"},
+          {"type": "supports", "target": "product2"}
+        ]
+      }
+    ]
+  }

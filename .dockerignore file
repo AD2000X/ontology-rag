@@ -1,0 +1,25 @@
+# Git files
+.git
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Secrets
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# IDE specific files
+.idea/
+.vscode/

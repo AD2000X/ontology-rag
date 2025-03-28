@@ -1,0 +1,24 @@
+[server]
+headless = true
+port = 7860
+enableCORS = false
+enableXsrfProtection = true
+enableWebsocketCompression = true
+
+[browser]
+serverAddress = "localhost"
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f8fa"
+textColor = "#262730"
+font = "sans serif"
+
+[runner]
+magicEnabled = true
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = false

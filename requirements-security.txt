@@ -1,0 +1,5 @@
+# Security-related dependencies
+python-dotenv>=1.0.0    # Environment variable management
+pydantic>=2.5.0         # Data validation
+cryptography>=41.0.0    # Cryptographic recipes and primitives
+requests>=2.31.0        # HTTP library with security features

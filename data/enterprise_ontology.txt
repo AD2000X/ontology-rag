@@ -1,0 +1,10 @@
+Product is owned by Department.
+Department is managed by Manager.
+Employee works on Product.
+Customer purchases Product and provides Feedback.
+Platform supports Product tracking, versioning, and ownership.
+Each Product has an associated Lifecycle.
+Product Lifecycle includes stages like development, launch, maintenance, and retirement.
+Manager oversees Employee performance and departmental goals.
+Feedback includes sentiment, rating, and suggestions.
+Platform uses AI agents to optimize Product development based on Feedback trends.
