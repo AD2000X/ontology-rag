@@ -1,0 +1,606 @@
+Overview
+The Graph-Based Retrieval components of this system enable sophisticated reasoning and information discovery based on the structured knowledge in the ontology. By implementing semantic path finding, relationship traversal, entity and relationship-based retrieval, and multi-hop reasoning, the system can answer complex questions that require understanding of how entities are connected and related.
+This graph-based approach significantly enhances traditional vector-based retrieval by adding structured knowledge and semantic relationships to the mix. It enables the system to explain not just that two entities are related, but how they are related through specific paths and intermediate concepts.
+The combination of graph-based retrieval with traditional vector-based methods creates a powerful hybrid system that can leverage both the broad pattern-matching capabilities of embeddings and the precise structural knowledge of the ontology. This results in more accurate, contextually rich, and logically consistent answers to user queries.
+
+Graph-Based Retrieval in Ontology-Enhanced RAG
+This section explores how the repository implements graph-based retrieval techniques to enhance traditional vector search with semantic understanding and structured knowledge.
+Semantic Path Finding
+Semantic path finding is a core capability that enables the system to discover meaningful connections between entities through their relationships. The implementation primarily occurs in the find_paths_between_entities method in the KnowledgeGraph class.
+pythonCopy# src/knowledge_graph.py
+
+def find_paths_between_entities(
+    self, 
+    source_entity: str, 
+    target_entity: str, 
+    max_length: int = 3
+) -> List[List[Dict]]:
+    """
+    Find all paths between two entities up to a maximum length.
+    
+    Args:
+        source_entity: Starting entity ID
+        target_entity: Target entity ID
+        max_length: Maximum path length
+        
+    Returns:
+        A list of paths, where each path is a list of edge dictionaries
+    """
+    if not self.graph or source_entity not in self.graph or target_entity not in self.graph:
+        return []
+    
+    # Use networkx to find simple paths
+    try:
+        simple_paths = list(nx.all_simple_paths(
+            self.graph, source_entity, target_entity, cutoff=max_length
+        ))
+    except (nx.NetworkXNoPath, nx.NodeNotFound):
+        return []
+    
+    # Convert paths to edge sequences
+    paths = []
+    for path in simple_paths:
+        edge_sequence = []
+        for i in range(len(path) - 1):
+            source = path[i]
+            target = path[i + 1]
+            
+            # There may be multiple edges between nodes
+            edges = self.graph.get_edge_data(source, target)
+            if edges:
+                for key, data in edges.items():
+                    edge_sequence.append({
+                        "source": source,
+                        "target": target,
+                        "type": data.get("type", "unknown")
+                    })
+        
+        # Only include the path if it has meaningful relationships
+        # Filter out paths that only contain structural relationships like subClassOf, instanceOf
+        meaningful_relationships = [edge for edge in edge_sequence 
+                                  if edge["type"] not in ["subClassOf", "instanceOf"]]
+        
+        if meaningful_relationships:
+            paths.append(edge_sequence)
+    
+    # Sort paths by length (shorter paths first)
+    paths.sort(key=len)
+    
+    return paths
+The OntologyManager class also provides a similar method:
+pythonCopy# src/ontology_manager.py
+
+def find_paths(self, source_id: str, target_id: str, max_length: int = 3) -> List[List[Dict]]:
+    """
+    Find all paths between two entities up to a maximum length.
+    
+    Args:
+        source_id: Starting entity ID
+        target_id: Target entity ID
+        max_length: Maximum path length
+        
+    Returns:
+        A list of paths, where each path is a list of relationship dictionaries
+    """
+    paths = []
+    
+    # Use networkx to find simple paths
+    simple_paths = nx.all_simple_paths(self.graph, source_id, target_id, cutoff=max_length)
+    
+    for path in simple_paths:
+        path_with_edges = []
+        for i in range(len(path) - 1):
+            source = path[i]
+            target = path[i + 1]
+            # There may be multiple edges between nodes
+            edges = self.graph.get_edge_data(source, target)
+            if edges:
+                for key, data in edges.items():
+                    path_with_edges.append({
+                        "source": source,
+                        "target": target,
+                        "type": data.get("type", "unknown")
+                    })
+        paths.append(path_with_edges)
+        
+    return paths
+These paths are used in the SemanticRetriever to enhance RAG with structured knowledge:
+pythonCopy# src/semantic_retriever.py
+
+def retrieve_with_paths(self, query: str, k: int = 4) -> Dict[str, Any]:
+    """
+    Enhanced retrieval that includes semantic paths between entities.
+    
+    Args:
+        query: The query string
+        k: Number of documents to retrieve
+        
+    Returns:
+        A dictionary containing retrieved documents and semantic paths
+    """
+    # Basic retrieval
+    basic_results = self.retrieve(query, k)
+    
+    # Extract potential entities from the query
+    # ... entity extraction logic ...
+    
+    # Find paths between potential entities
+    paths = []
+    if len(potential_entities) >= 2:
+        for i in range(len(potential_entities)):
+            for j in range(i+1, len(potential_entities)):
+                source = potential_entities[i]
+                target = potential_entities[j]
+                
+                # Find paths between these entities
+                entity_paths = self.ontology_manager.find_paths(source, target, max_length=3)
+                
+                if entity_paths:
+                    for path in entity_paths:
+                        # Convert path to text
+                        path_text = self._path_to_text(path)
+                        paths.append({
+                            "source": source,
+                            "target": target,
+                            "path": path,
+                            "text": path_text
+                        })
+To make these paths understandable by users and language models, they are converted to textual descriptions:
+pythonCopy# src/semantic_retriever.py
+
+def _path_to_text(self, path: List[Dict]) -> str:
+    """Convert a path to a text description."""
+    if not path:
+        return ""
+    
+    text_parts = []
+    for edge in path:
+        source = edge["source"]
+        target = edge["target"]
+        relation = edge["type"]
+        
+        # Get entity information
+        source_info = self.ontology_manager.get_entity_info(source)
+        target_info = self.ontology_manager.get_entity_info(target)
+        
+        # Get names if available
+        source_name = source
+        if "properties" in source_info and "name" in source_info["properties"]:
+            source_name = source_info["properties"]["name"]
+        
+        target_name = target
+        if "properties" in target_info and "name" in target_info["properties"]:
+            target_name = target_info["properties"]["name"]
+        
+        # Describe the relationship
+        text_parts.append(f"{source_name} {relation} {target_name}")
+    
+    return " -> ".join(text_parts)
+The Streamlit application provides direct visualization of these semantic paths:
+pythonCopy# app.py
+
+def render_semantic_path_tab():
+    st.title("Semantic Path Visualization")
+
+    entities = [
+        node for node, attr in ontology_manager.graph.nodes(data=True)
+        if attr.get("type") == "instance"
+    ]
+    entities = sorted(set(entities))
+
+    source_entity = st.selectbox("Select Source Entity", entities, key="source_entity") if entities else None
+    target_entity = st.selectbox("Select Target Entity", entities, key="target_entity") if entities else None
+
+    if source_entity and target_entity and source_entity != target_entity:
+        max_length = st.slider("Maximum Path Length", 1, 5, 3)
+
+        paths = knowledge_graph.find_paths_between_entities(
+            source_entity,
+            target_entity,
+            max_length=max_length
+        )
+
+        if paths:
+            st.success(f"Found {len(paths)} paths!")
+            for i, path in enumerate(paths):
+                path_length = len(path)
+                rel_types = [edge["type"] for edge in path]
+
+                with st.expander(f"Path {i+1} (Length: {path_length}, Relations: {', '.join(rel_types)})", expanded=(i==0)):
+                    # Path display code...
+                    
+                    # Render full visualization outside nested expander
+                    st.subheader("Path Visualization")
+                    visualize_path(path_info, ontology_manager)
+Relationship Traversal
+The system enables traversal of relationships within the knowledge graph to discover connected entities and explore the neighborhood of a specific entity.
+pythonCopy# src/knowledge_graph.py
+
+def get_entity_neighborhood(
+    self, 
+    entity_id: str, 
+    max_distance: int = 1,
+    include_classes: bool = True
+) -> Dict[str, Any]:
+    """
+    Get the neighborhood of an entity.
+    
+    Args:
+        entity_id: The central entity ID
+        max_distance: Maximum distance from the central entity
+        include_classes: Whether to include class relationships
+        
+    Returns:
+        A dictionary containing the neighborhood information
+    """
+    if not self.graph or entity_id not in self.graph:
+        return {}
+    
+    # Get nodes within max_distance of entity_id using BFS
+    nodes_at_distance = {0: [entity_id]}
+    visited = set([entity_id])
+    
+    for distance in range(1, max_distance + 1):
+        nodes_at_distance[distance] = []
+        
+        for node in nodes_at_distance[distance - 1]:
+            # Get neighbors
+            neighbors = list(self.graph.successors(node)) + list(self.graph.predecessors(node))
+            
+            for neighbor in neighbors:
+                # Skip class nodes if not including classes
+                neighbor_data = self.graph.nodes.get(neighbor, {})
+                if not include_classes and neighbor_data.get("type") == "class":
+                    continue
+                
+                if neighbor not in visited:
+                    nodes_at_distance[distance].append(neighbor)
+                    visited.add(neighbor)
+    
+    # Build neighbor information
+    # ... additional code to analyze relationships and build result data ...
+    
+    return {
+        "central_entity": {
+            "id": entity_id,
+            "type": central_data.get("type"),
+            "class_type": central_data.get("class_type", ""),
+            "properties": central_data.get("properties", {})
+        },
+        "neighbors": neighbors,
+        "neighbors_by_distance": dict(neighbors_by_distance),
+        "total_neighbors": len(neighbors)
+    }
+This relationship traversal is used in the entity exploration user interface:
+pythonCopy# app.py
+
+def run_entity_exploration():
+    # ... code to select entity ...
+    
+    if selected_entity:
+        # ... code to display entity details ...
+
+        st.subheader("Entity Neighborhood")
+        max_distance = st.slider("Maximum Neighborhood Distance", 1, 3, 1, key=f"distance_slider_{selected_entity}")
+        neighborhood = knowledge_graph.get_entity_neighborhood(
+            selected_entity,
+            max_distance=max_distance,
+            include_classes=True
+        )
+
+        if neighborhood and "neighbors" in neighborhood:
+            lines = []
+            for distance in range(1, max_distance+1):
+                neighbors_at_distance = [n for n in neighborhood["neighbors"] if n["distance"] == distance]
+
+                if neighbors_at_distance:
+                    lines.append(f"**Neighbors at Distance {distance} ({len(neighbors_at_distance)})**")
+                    for neighbor in neighbors_at_distance:
+                        lines.append(f"- **{neighbor['id']}** ({neighbor.get('class_type', 'unknown')})")
+                        for relation in neighbor.get("relations", []):
+                            direction = "→" if relation["direction"] == "outgoing" else "←"
+                            lines.append(f"  - {direction} {relation['type']}")
+                        lines.append("---")
+            with st.expander("Show Neighbor Details", expanded=False):
+                for line in lines:
+                    st.markdown(line)
+Entity and Relationship-Based Retrieval
+The system provides specialized methods for retrieving entities and information based on specific relationships, enabling targeted queries against the knowledge structure.
+pythonCopy# src/ontology_manager.py
+
+def get_relationships(self, entity_id: str, relationship_type: Optional[str] = None) -> List[Dict]:
+    """
+    Get all relationships for a given entity, optionally filtered by type.
+    
+    Args:
+        entity_id: The ID of the entity
+        relationship_type: Optional relationship type to filter by
+        
+    Returns:
+        A list of dictionaries containing relationship information
+    """
+    relationships = []
+    
+    # Look at outgoing edges
+    for _, target, data in self.graph.out_edges(entity_id, data=True):
+        rel_type = data.get("type")
+        if rel_type != "instanceOf" and rel_type != "subClassOf":
+            if relationship_type is None or rel_type == relationship_type:
+                relationships.append({
+                    "type": rel_type,
+                    "target": target,
+                    "direction": "outgoing"
+                })
+    
+    # Look at incoming edges
+    for source, _, data in self.graph.in_edges(entity_id, data=True):
+        rel_type = data.get("type")
+        if rel_type != "instanceOf" and rel_type != "subClassOf":
+            if relationship_type is None or rel_type == relationship_type:
+                relationships.append({
+                    "type": rel_type,
+                    "source": source,
+                    "direction": "incoming"
+                })
+                
+    return relationships
+The system also provides a specialized query method for finding entities connected by specific relationships:
+pythonCopy# src/ontology_manager.py
+
+def query_by_relationship(self, source_type: str, relationship: str, target_type: str) -> List[Dict]:
+    """
+    Query for instances connected by a specific relationship.
+    
+    Args:
+        source_type: Type of the source entity
+        relationship: Type of relationship
+        target_type: Type of the target entity
+        
+    Returns:
+        A list of matching relationship dictionaries
+    """
+    results = []
+    
+    # Get all instances of the source type
+    source_instances = self.get_instances_of_class(source_type)
+    
+    for source_id in source_instances:
+        # Get relationships of the specified type
+        relationships = self.get_relationships(source_id, relationship)
+        
+        for rel in relationships:
+            if rel["direction"] == "outgoing" and "target" in rel:
+                target_id = rel["target"]
+                target_data = self.graph.nodes[target_id]
+                
+                # Check if the target is of the right type
+                if (target_data.get("type") == "instance" and 
+                    target_data.get("class_type") == target_type):
+                    results.append({
+                        "source": source_id,
+                        "source_properties": self.graph.nodes[source_id].get("properties", {}),
+                        "relationship": relationship,
+                        "target": target_id,
+                        "target_properties": target_data.get("properties", {})
+                    })
+    
+    return results
+This relationship-based retrieval enriches the semantic context provided for queries:
+pythonCopy# src/ontology_manager.py
+
+def get_semantic_context(self, query: str) -> List[str]:
+    """
+    Retrieve relevant semantic context from the ontology based on a query.
+    
+    This method identifies entities and relationships mentioned in the query
+    and returns contextual information about them from the ontology.
+    """
+    # ... code to identify entities in query ...
+    
+    # Check for relationship mentions
+    for rel in self.ontology_data["relationships"]:
+        if rel["name"].lower() in query_lower:
+            chunk = f"Relationship {rel['name']}: {rel.get('description', '')}\n"
+            chunk += f"This relationship connects {rel['domain']} to {rel['range']}.\n"
+            
+            # Add examples
+            examples = self.query_by_relationship(rel['domain'], rel['name'], rel['range'])[:3]
+            if examples:
+                chunk += "Examples:\n"
+                for ex in examples:
+                    source_props = ex["source_properties"]
+                    target_props = ex["target_properties"]
+                    
+                    source_name = source_props.get("name", ex["source"])
+                    target_name = target_props.get("name", ex["target"])
+                    
+                    chunk += f"- {source_name} {rel['name']} {target_name}\n"
+Multi-Hop Reasoning Across Connected Concepts
+The system implements multi-hop reasoning through path finding and traversal of connected entities in the knowledge graph. This capability allows it to draw conclusions based on chains of relationships.
+In the SemanticRetriever, multi-hop reasoning is implemented by finding paths between entities mentioned in queries:
+pythonCopy# src/semantic_retriever.py
+
+def retrieve_with_paths(self, query: str, k: int = 4) -> Dict[str, Any]:
+    """
+    Enhanced retrieval that includes semantic paths between entities.
+    """
+    # ... code to extract entities from query ...
+    
+    # Find paths between potential entities
+    paths = []
+    if len(potential_entities) >= 2:
+        for i in range(len(potential_entities)):
+            for j in range(i+1, len(potential_entities)):
+                source = potential_entities[i]
+                target = potential_entities[j]
+                
+                # Find paths between these entities (multi-hop reasoning)
+                entity_paths = self.ontology_manager.find_paths(source, target, max_length=3)
+                
+                if entity_paths:
+                    for path in entity_paths:
+                        # Convert path to text
+                        path_text = self._path_to_text(path)
+                        paths.append({
+                            "source": source,
+                            "target": target,
+                            "path": path,
+                            "text": path_text
+                        })
+The system also identifies indirect relationships between entities through intermediate nodes:
+pythonCopy# src/knowledge_graph.py
+
+def get_entity_neighborhood(
+    self, 
+    entity_id: str, 
+    max_distance: int = 1,
+    include_classes: bool = True
+) -> Dict[str, Any]:
+    # ... code to find direct neighbors ...
+    
+    # Also find paths through intermediate nodes (indirect relationships)
+    if not relations:  # Only look for indirect if no direct relationships
+        for path_length in range(2, max_distance + 1):
+            try:
+                # Find paths of exactly length path_length
+                paths = list(nx.all_simple_paths(
+                    self.graph, entity_id, node, cutoff=path_length, min_edges=path_length
+                ))
+                
+                for path in paths:
+                    if len(path) > 1:  # Path should have at least 2 nodes
+                        intermediate_nodes = path[1:-1]  # Skip source and target
+                        
+                        # Format the path as a relation
+                        path_relation = {
+                            "type": "indirect_connection",
+                            "direction": "outgoing",
+                            "path_length": len(path) - 1,
+                            "intermediates": intermediate_nodes
+                        }
+                        
+                        relations.append(path_relation)
+                        
+                        # Only need one example of an indirect path
+                        break
+            except (nx.NetworkXNoPath, nx.NodeNotFound):
+                pass
+The visualization of these reasoning paths helps users understand how entities are connected:
+pythonCopy# src/visualization.py
+
+def visualize_path(path_info, ontology_manager):
+    """Visualize a semantic path between entities with enhanced graphics and details."""
+    import streamlit as st
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    from collections import defaultdict
+
+    if not path_info or "path" not in path_info:
+        st.warning("No path information available.")
+        return
+
+    st.subheader("🔄 Semantic Path Visualization")
+
+    path = path_info["path"]
+
+    # Get entity information for each node in the path
+    entities = {}
+    all_nodes = set()
+
+    if "source" in path_info:
+        source_id = path_info["source"]
+        all_nodes.add(source_id)
+        entities[source_id] = ontology_manager.get_entity_info(source_id)
+
+    if "target" in path_info:
+        target_id = path_info["target"]
+        all_nodes.add(target_id)
+        entities[target_id] = ontology_manager.get_entity_info(target_id)
+
+    for edge in path:
+        source_id = edge["source"]
+        target_id = edge["target"]
+        all_nodes.add(source_id)
+        all_nodes.add(target_id)
+
+        if source_id not in entities:
+            entities[source_id] = ontology_manager.get_entity_info(source_id)
+
+        if target_id not in entities:
+            entities[target_id] = ontology_manager.get_entity_info(target_id)
+
+    # ... code to create visualization ...
+    
+    # Add step-by-step description
+    st.markdown("### Step-by-Step Path")
+    if "text" in path_info and path_info["text"]:
+        st.markdown(f"**Path:** {path_info['text']}")
+    else:
+        path_steps = []
+        for edge in path:
+            source_id = edge["source"]
+            target_id = edge["target"]
+            relation = edge["type"]
+
+            source_name = entities[source_id].get("properties", {}).get("name", source_id)
+            target_name = entities[target_id].get("properties", {}).get("name", target_id)
+
+            path_steps.append(f"{source_name} **{relation}** {target_name}")
+
+        st.markdown(" → ".join(path_steps))
+The system even identifies business rules that are relevant to these multi-hop paths:
+pythonCopy# src/visualization.py
+
+def find_relevant_rules_for_path(path, ontology_manager):
+    """Find business rules relevant to the entities and relationships in a path."""
+    rules = ontology_manager.ontology_data.get("rules", [])
+    if not rules:
+        return []
+    
+    # Extract entities and relationships from the path
+    entity_types = set()
+    relationship_types = set()
+    
+    for edge in path:
+        source = edge["source"]
+        target = edge["target"]
+        relation = edge["type"]
+        
+        # Get entity info
+        source_info = ontology_manager.get_entity_info(source)
+        target_info = ontology_manager.get_entity_info(target)
+        
+        # Add entity types
+        if "class_type" in source_info:
+            entity_types.add(source_info["class_type"])
+        
+        if "class_type" in target_info:
+            entity_types.add(target_info["class_type"])
+        
+        # Add relationship type
+        relationship_types.add(relation)
+    
+    # Find rules that mention these entities or relationships
+    relevant_rules = []
+    
+    for rule in rules:
+        rule_text = json.dumps(rule).lower()
+        
+        # Check if rule mentions any of the entity types or relationships
+        is_relevant = False
+        
+        for entity_type in entity_types:
+            if entity_type.lower() in rule_text:
+                is_relevant = True
+                break
+        
+        if not is_relevant:
+            for rel_type in relationship_types:
+                if rel_type.lower() in rule_text:
+                    is_relevant = True
+                    break
+        
+        if is_relevant:
+            relevant_rules.append(rule)
+    
+    return relevant_rules
