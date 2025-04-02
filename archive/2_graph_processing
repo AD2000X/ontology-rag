@@ -1,0 +1,624 @@
+# Overview
+The graph processing capabilities of this system enable sophisticated knowledge exploration and reasoning based on ontological data. By leveraging NetworkX's graph algorithms, the system can find paths between entities, analyze graph statistics, explore entity neighborhoods, and build visualization-friendly graph representations. These capabilities are essential for the ontology-enhanced RAG approach, allowing the system to go beyond simple vector similarity to include structural knowledge in its retrieval and reasoning processes.
+
+
+Graph Processing in Ontology-Enhanced RAG
+This section explores how the repository leverages graph-based techniques to process and analyze the ontological knowledge. The graph processing capabilities provide the foundation for semantic path finding, entity exploration, and relationship analysis.
+NetworkX for Graph Data Structures
+The system uses NetworkX, a Python package for complex networks, as the core infrastructure for representing and managing the knowledge graph. The KnowledgeGraph class in src/knowledge_graph.py extends the functionality provided by NetworkX.
+pythonCopy# src/knowledge_graph.py
+
+import networkx as nx
+from pyvis.network import Network
+import json
+from typing import Dict, List, Any, Optional, Set, Tuple
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from collections import defaultdict
+
+class KnowledgeGraph:
+    """
+    Handles the construction and visualization of knowledge graphs
+    based on the ontology data.
+    """
+    
+    def __init__(self, ontology_manager=None):
+        """
+        Initialize the knowledge graph handler.
+        
+        Args:
+            ontology_manager: Optional ontology manager instance
+        """
+        self.ontology_manager = ontology_manager
+        self.graph = None
+        
+        if ontology_manager:
+            self.graph = ontology_manager.graph
+NetworkX provides critical features for the system:
+
+Directed graph support through nx.MultiDiGraph()
+Node and edge attribute storage
+Path finding algorithms
+Graph metrics calculations
+Support for graph algorithms
+
+Graph Building from Ontological Data
+The system builds a graph representation of the ontology data in the _build_graph method of the OntologyManager class. This method transforms the JSON data into a structured graph with nodes for classes and instances, and edges for relationships.
+pythonCopy# src/ontology_manager.py
+
+def _build_graph(self):
+    """Build the ontology graph from the JSON data."""
+    # Add classes
+    for class_id, class_data in self.ontology_data["classes"].items():
+        self.graph.add_node(
+            class_id,
+            type="class",
+            description=class_data.get("description", ""),
+            properties=class_data.get("properties", [])
+        )
+
+        # Handle subclass relations
+        if "subClassOf" in class_data:
+            parent = class_data["subClassOf"]
+            self.graph.add_edge(class_id, parent, type="subClassOf")
+
+    # Add relationships (schema-level only, no edge added yet)
+    for rel in self.ontology_data.get("relationships", []):
+        pass  # schema relationships are used for metadata, not edges
+
+    # Add instances
+    for instance in self.ontology_data.get("instances", []):
+        instance_id = instance["id"]
+        class_type = instance["type"]
+        properties = instance.get("properties", {})
+
+        # Add the instance node
+        self.graph.add_node(
+            instance_id,
+            type="instance",
+            class_type=class_type,
+            properties=properties
+        )
+
+        # Link instance to its class
+        self.graph.add_edge(instance_id, class_type, type="instanceOf")
+
+        # Add relationship edges if any
+        for rel in instance.get("relationships", []):
+            target = rel.get("target")
+            rel_type = rel.get("type")
+            if target and rel_type:
+                self.graph.add_edge(instance_id, target, type=rel_type)
+For visualization purposes, the system also builds a simplified graph that focuses on specific aspects:
+pythonCopy# src/knowledge_graph.py
+
+def build_visualization_graph(
+    self, 
+    include_classes: bool = True,
+    include_instances: bool = True,
+    central_entity: Optional[str] = None,
+    max_distance: int = 2,
+    include_properties: bool = False
+) -> nx.Graph:
+    """
+    Build a simplified graph for visualization purposes.
+    
+    Args:
+        include_classes: Whether to include class nodes
+        include_instances: Whether to include instance nodes
+        central_entity: Optional central entity to focus the graph on
+        max_distance: Maximum distance from central entity to include
+        include_properties: Whether to include property nodes
+        
+    Returns:
+        A NetworkX graph suitable for visualization
+    """
+    if not self.graph:
+        return nx.Graph()
+    
+    # Create an undirected graph for visualization
+    viz_graph = nx.Graph()
+    
+    # If we have a central entity, extract a subgraph around it
+    if central_entity and central_entity in self.graph:
+        # Get nodes within max_distance of central_entity
+        nodes_to_include = set([central_entity])
+        current_distance = 0
+        current_layer = set([central_entity])
+        
+        while current_distance < max_distance:
+            next_layer = set()
+            for node in current_layer:
+                # Get neighbors
+                neighbors = set(self.graph.successors(node)).union(set(self.graph.predecessors(node)))
+                next_layer.update(neighbors)
+            
+            nodes_to_include.update(next_layer)
+            current_layer = next_layer
+            current_distance += 1
+        
+        # Create subgraph
+        subgraph = self.graph.subgraph(nodes_to_include)
+    else:
+        subgraph = self.graph
+    
+    # Additional code to add nodes and edges to viz_graph...
+Path Finding Between Entities
+A core feature of the system is the ability to find paths between entities in the knowledge graph. This enables multi-hop reasoning and relationship discovery.
+pythonCopy# src/knowledge_graph.py
+
+def find_paths_between_entities(
+    self, 
+    source_entity: str, 
+    target_entity: str, 
+    max_length: int = 3
+) -> List[List[Dict]]:
+    """
+    Find all paths between two entities up to a maximum length.
+    
+    Args:
+        source_entity: Starting entity ID
+        target_entity: Target entity ID
+        max_length: Maximum path length
+        
+    Returns:
+        A list of paths, where each path is a list of edge dictionaries
+    """
+    if not self.graph or source_entity not in self.graph or target_entity not in self.graph:
+        return []
+    
+    # Use networkx to find simple paths
+    try:
+        simple_paths = list(nx.all_simple_paths(
+            self.graph, source_entity, target_entity, cutoff=max_length
+        ))
+    except (nx.NetworkXNoPath, nx.NodeNotFound):
+        return []
+    
+    # Convert paths to edge sequences
+    paths = []
+    for path in simple_paths:
+        edge_sequence = []
+        for i in range(len(path) - 1):
+            source = path[i]
+            target = path[i + 1]
+            
+            # There may be multiple edges between nodes
+            edges = self.graph.get_edge_data(source, target)
+            if edges:
+                for key, data in edges.items():
+                    edge_sequence.append({
+                        "source": source,
+                        "target": target,
+                        "type": data.get("type", "unknown")
+                    })
+        
+        # Only include the path if it has meaningful relationships
+        # Filter out paths that only contain structural relationships like subClassOf, instanceOf
+        meaningful_relationships = [edge for edge in edge_sequence 
+                                  if edge["type"] not in ["subClassOf", "instanceOf"]]
+        
+        if meaningful_relationships:
+            paths.append(edge_sequence)
+    
+    # Sort paths by length (shorter paths first)
+    paths.sort(key=len)
+    
+    return paths
+This path finding capability is used in the SemanticRetriever to enhance retrieval with semantic paths:
+pythonCopy# src/semantic_retriever.py
+
+def retrieve_with_paths(self, query: str, k: int = 4) -> Dict[str, Any]:
+    """
+    Enhanced retrieval that includes semantic paths between entities.
+    
+    Args:
+        query: The query string
+        k: Number of documents to retrieve
+        
+    Returns:
+        A dictionary containing retrieved documents and semantic paths
+    """
+    # Basic retrieval
+    basic_results = self.retrieve(query, k)
+    
+    # Extract potential entities from the query (simplified approach)
+    # A more sophisticated approach would use NER or entity linking
+    entity_types = ["Product", "Department", "Employee", "Manager", "Customer", "Feedback"]
+    query_words = query.lower().split()
+    
+    potential_entities = []
+    for entity_type in entity_types:
+        if entity_type.lower() in query_words:
+            # Get instances of this type
+            instances = self.ontology_manager.get_instances_of_class(entity_type)
+            if instances:
+                # Just take the first few for demonstration
+                potential_entities.extend(instances[:2])
+    
+    # Find paths between potential entities
+    paths = []
+    if len(potential_entities) >= 2:
+        for i in range(len(potential_entities)):
+            for j in range(i+1, len(potential_entities)):
+                source = potential_entities[i]
+                target = potential_entities[j]
+                
+                # Find paths between these entities
+                entity_paths = self.ontology_manager.find_paths(source, target, max_length=3)
+                
+                if entity_paths:
+                    for path in entity_paths:
+                        # Convert path to text
+                        path_text = self._path_to_text(path)
+                        paths.append({
+                            "source": source,
+                            "target": target,
+                            "path": path,
+                            "text": path_text
+                        })
+    
+    # Convert paths to documents
+    path_documents = []
+    for i, path_info in enumerate(paths):
+        path_documents.append(Document(
+            page_content=path_info["text"],
+            metadata={
+                "source": "semantic_path",
+                "path_id": i,
+                "source_entity": path_info["source"],
+                "target_entity": path_info["target"]
+            }
+        ))
+    
+    return {
+        "documents": basic_results + path_documents,
+        "paths": paths
+    }
+Graph Statistics and Centrality Metrics
+The system calculates various graph statistics and centrality metrics to provide insights into the knowledge structure.
+pythonCopy# src/knowledge_graph.py
+
+def get_graph_statistics(self) -> Dict[str, Any]:
+    """
+    Calculate statistics about the knowledge graph.
+    
+    Returns:
+        A dictionary containing graph statistics
+    """
+    if not self.graph:
+        return {}
+    
+    # Count nodes by type
+    class_count = 0
+    instance_count = 0
+    property_count = 0
+    
+    for _, data in self.graph.nodes(data=True):
+        node_type = data.get("type")
+        if node_type == "class":
+            class_count += 1
+        elif node_type == "instance":
+            instance_count += 1
+            if "properties" in data:
+                property_count += len(data["properties"])
+    
+    # Count edges by type
+    relationship_counts = {}
+    for _, _, data in self.graph.edges(data=True):
+        rel_type = data.get("type", "unknown")
+        relationship_counts[rel_type] = relationship_counts.get(rel_type, 0) + 1
+    
+    # Calculate graph metrics
+    try:
+        # Some metrics only work on undirected graphs
+        undirected = nx.Graph(self.graph)
+        avg_degree = sum(dict(undirected.degree()).values()) / undirected.number_of_nodes()
+        
+        # Only calculate these if the graph is connected
+        if nx.is_connected(undirected):
+            avg_path_length = nx.average_shortest_path_length(undirected)
+            diameter = nx.diameter(undirected)
+        else:
+            # Get the largest connected component
+            largest_cc = max(nx.connected_components(undirected), key=len)
+            largest_cc_subgraph = undirected.subgraph(largest_cc)
+            
+            avg_path_length = nx.average_shortest_path_length(largest_cc_subgraph)
+            diameter = nx.diameter(largest_cc_subgraph)
+            
+        # Calculate density
+        density = nx.density(self.graph)
+        
+        # Calculate clustering coefficient
+        clustering = nx.average_clustering(undirected)
+    except:
+        avg_degree = 0
+        avg_path_length = 0
+        diameter = 0
+        density = 0
+        clustering = 0
+    
+    # Count different entity types
+    class_counts = defaultdict(int)
+    for _, data in self.graph.nodes(data=True):
+        if data.get("type") == "instance":
+            class_type = data.get("class_type", "unknown")
+            class_counts[class_type] += 1
+    
+    # Get nodes with highest centrality
+    try:
+        betweenness = nx.betweenness_centrality(self.graph)
+        degree = nx.degree_centrality(self.graph)
+        
+        # Get top 5 nodes by betweenness centrality
+        top_betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_degree = sorted(degree.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        central_nodes = {
+            "betweenness": [{"node": node, "centrality": round(cent, 3)} for node, cent in top_betweenness],
+            "degree": [{"node": node, "centrality": round(cent, 3)} for node, cent in top_degree]
+        }
+    except:
+        central_nodes = {}
+    
+    return {
+        "node_count": self.graph.number_of_nodes(),
+        "edge_count": self.graph.number_of_edges(),
+        "class_count": class_count,
+        "instance_count": instance_count,
+        "property_count": property_count,
+        "relationship_counts": relationship_counts,
+        "class_instance_counts": dict(class_counts),
+        "average_degree": avg_degree,
+        "average_path_length": avg_path_length,
+        "diameter": diameter,
+        "density": density,
+        "clustering_coefficient": clustering,
+        "central_nodes": central_nodes
+    }
+These statistics are used in the Streamlit application to provide insights about the knowledge graph structure:
+pythonCopy# app.py
+
+def run_knowledge_graph_visualization():
+    st.title("Knowledge Graph Visualization")
+    
+    # Check if there is a central entity selected
+    central_entity = st.session_state.get('central_entity', None)
+    
+    # Call visualization function
+    display_graph_visualization(knowledge_graph, central_entity=central_entity, max_distance=2)
+    
+    # Get and display graph statistics
+    graph_stats = knowledge_graph.get_graph_statistics()
+    if graph_stats:
+        st.subheader("Graph Statistics")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Nodes", graph_stats.get("node_count", 0))
+        col2.metric("Edges", graph_stats.get("edge_count", 0))
+        col3.metric("Classes", graph_stats.get("class_count", 0))
+        col4.metric("Instances", graph_stats.get("instance_count", 0))
+        
+        # Display central nodes
+        if "central_nodes" in graph_stats and graph_stats["central_nodes"]:
+            st.subheader("Central Nodes (by Betweenness Centrality)")
+            central_nodes = graph_stats["central_nodes"]["betweenness"]
+            nodes_df = []
+            for node_info in central_nodes:
+                node_id = node_info["node"]
+                node_data = knowledge_graph.graph.nodes.get(node_id, {})
+                node_type = node_data.get("type", "unknown")
+                if node_type == "instance":
+                    node_class = node_data.get("class_type", "unknown")
+                    properties = node_data.get("properties", {})
+                    name = properties.get("name", node_id)
+                    nodes_df.append({
+                        "ID": node_id,
+                        "Name": name,
+                        "Type": node_class,
+                        "Centrality": node_info["centrality"]
+                    })
+            
+            st.table(nodes_df)
+Neighborhood Exploration
+The system enables exploration of entity neighborhoods to discover related entities within a specified distance.
+pythonCopy# src/knowledge_graph.py
+
+def get_entity_neighborhood(
+    self, 
+    entity_id: str, 
+    max_distance: int = 1,
+    include_classes: bool = True
+) -> Dict[str, Any]:
+    """
+    Get the neighborhood of an entity.
+    
+    Args:
+        entity_id: The central entity ID
+        max_distance: Maximum distance from the central entity
+        include_classes: Whether to include class relationships
+        
+    Returns:
+        A dictionary containing the neighborhood information
+    """
+    if not self.graph or entity_id not in self.graph:
+        return {}
+    
+    # Get nodes within max_distance of entity_id using BFS
+    nodes_at_distance = {0: [entity_id]}
+    visited = set([entity_id])
+    
+    for distance in range(1, max_distance + 1):
+        nodes_at_distance[distance] = []
+        
+        for node in nodes_at_distance[distance - 1]:
+            # Get neighbors
+            neighbors = list(self.graph.successors(node)) + list(self.graph.predecessors(node))
+            
+            for neighbor in neighbors:
+                # Skip class nodes if not including classes
+                neighbor_data = self.graph.nodes.get(neighbor, {})
+                if not include_classes and neighbor_data.get("type") == "class":
+                    continue
+                
+                if neighbor not in visited:
+                    nodes_at_distance[distance].append(neighbor)
+                    visited.add(neighbor)
+    
+    # Flatten the nodes
+    all_nodes = [node for nodes in nodes_at_distance.values() for node in nodes]
+    
+    # Extract the subgraph
+    subgraph = self.graph.subgraph(all_nodes)
+    
+    # Build neighbor information
+    neighbors = []
+    for node in all_nodes:
+        if node == entity_id:
+            continue
+            
+        node_data = self.graph.nodes[node]
+        
+        # Determine the relations to central entity
+        relations = []
+        
+        # Check direct relationships
+        # Check if central entity is source
+        edges_out = self.graph.get_edge_data(entity_id, node)
+        if edges_out:
+            for key, data in edges_out.items():
+                rel_type = data.get("type", "unknown")
+                
+                # Skip structural relationships if not including classes
+                if not include_classes and rel_type in ["subClassOf", "instanceOf"]:
+                    continue
+                
+                relations.append({
+                    "type": rel_type,
+                    "direction": "outgoing"
+                })
+        
+        # Check if central entity is target
+        edges_in = self.graph.get_edge_data(node, entity_id)
+        if edges_in:
+            for key, data in edges_in.items():
+                rel_type = data.get("type", "unknown")
+                
+                # Skip structural relationships if not including classes
+                if not include_classes and rel_type in ["subClassOf", "instanceOf"]:
+                    continue
+                
+                relations.append({
+                    "type": rel_type,
+                    "direction": "incoming"
+                })
+        
+        # Also find paths through intermediate nodes (indirect relationships)
+        if not relations:  # Only look for indirect if no direct relationships
+            for path_length in range(2, max_distance + 1):
+                try:
+                    # Find paths of exactly length path_length
+                    paths = list(nx.all_simple_paths(
+                        self.graph, entity_id, node, cutoff=path_length, min_edges=path_length
+                    ))
+                    
+                    for path in paths:
+                        if len(path) > 1:  # Path should have at least 2 nodes
+                            intermediate_nodes = path[1:-1]  # Skip source and target
+                            
+                            # Format the path as a relation
+                            path_relation = {
+                                "type": "indirect_connection",
+                                "direction": "outgoing",
+                                "path_length": len(path) - 1,
+                                "intermediates": intermediate_nodes
+                            }
+                            
+                            relations.append(path_relation)
+                            
+                            # Only need one example of an indirect path
+                            break
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                    pass
+        
+        # Only include neighbors with relations
+        if relations:
+            neighbors.append({
+                "id": node,
+                "type": node_data.get("type"),
+                "class_type": node_data.get("class_type"),
+                "properties": node_data.get("properties", {}),
+                "relations": relations,
+                "distance": next(dist for dist, nodes in nodes_at_distance.items() if node in nodes)
+            })
+    
+    # Group neighbors by distance
+    neighbors_by_distance = defaultdict(list)
+    for neighbor in neighbors:
+        neighbors_by_distance[neighbor["distance"]].append(neighbor)
+    
+    # Get central entity info
+    central_data = self.graph.nodes[entity_id]
+    
+    return {
+        "central_entity": {
+            "id": entity_id,
+            "type": central_data.get("type"),
+            "class_type": central_data.get("class_type", ""),
+            "properties": central_data.get("properties", {})
+        },
+        "neighbors": neighbors,
+        "neighbors_by_distance": dict(neighbors_by_distance),
+        "total_neighbors": len(neighbors)
+    }
+This neighborhood exploration is used in the entity exploration page of the application:
+pythonCopy# app.py
+
+def run_entity_exploration():
+    st.title("Entity Exploration")
+
+    # Grab all entities from the graph
+    entities = [
+        node for node, attr in ontology_manager.graph.nodes(data=True)
+        if attr.get("type") == "instance"
+    ]
+    entities = sorted(set(entities))
+
+    selected_entity = st.selectbox("Select Entity", entities) if entities else None
+
+    if selected_entity:
+        entity_info = ontology_manager.get_entity_info(selected_entity)
+        display_entity_details(entity_info, ontology_manager)
+
+        if st.button("View this Entity in the Knowledge Graph", key=f"view_entity_{selected_entity}"):
+            st.session_state.central_entity = selected_entity
+            st.rerun()
+
+        st.subheader("Entity Neighborhood")
+        max_distance = st.slider("Maximum Neighborhood Distance", 1, 3, 1, key=f"distance_slider_{selected_entity}")
+        neighborhood = knowledge_graph.get_entity_neighborhood(
+            selected_entity,
+            max_distance=max_distance,
+            include_classes=True
+        )
+
+        if neighborhood and "neighbors" in neighborhood:
+            lines = []
+            for distance in range(1, max_distance+1):
+                neighbors_at_distance = [n for n in neighborhood["neighbors"] if n["distance"] == distance]
+
+                if neighbors_at_distance:
+                    lines.append(f"**Neighbors at Distance {distance} ({len(neighbors_at_distance)})**")
+                    for neighbor in neighbors_at_distance:
+                        lines.append(f"- **{neighbor['id']}** ({neighbor.get('class_type', 'unknown')})")
+                        for relation in neighbor.get("relations", []):
+                            direction = "→" if relation["direction"] == "outgoing" else "←"
+                            lines.append(f"  - {direction} {relation['type']}")
+                        lines.append("---")
+            with st.expander("Show Neighbor Details", expanded=False):
+                for line in lines:
+                    st.markdown(line)
+
+    elif not entities:
+        st.warning("No entities found in the ontology.")
