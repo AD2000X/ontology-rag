@@ -1,0 +1,141 @@
+Technologies Used in the Ontology-Enhanced RAG System
+Knowledge Representation and Management
+
+Ontology Modeling
+
+JSON-based ontology representation
+Class hierarchy with inheritance relationships
+Formal relationship definitions with domain and range constraints
+Business rules and constraints
+Instance data for concrete examples
+
+
+Graph Processing
+
+NetworkX for graph data structures
+Graph building from ontological data
+Path finding between entities
+Graph statistics and centrality metrics
+Neighborhood exploration
+
+
+
+Retrieval Technologies
+
+Vector-Based Retrieval
+
+FAISS for vector similarity search
+OpenAI embeddings for text vectorization
+Chunking with configurable size and overlap
+Multiple retrieval strategies (similarity, hybrid)
+
+
+Graph-Based Retrieval
+
+Semantic path finding
+Relationship traversal
+Entity and relationship-based retrieval
+Multi-hop reasoning across connected concepts
+
+
+Hybrid Retrieval
+
+Combined vector and graph-based approaches
+Context enhancement with ontological knowledge
+Entity-awareness in query processing
+
+
+
+Natural Language Processing
+
+Language Model Integration
+
+OpenAI GPT models for response generation
+LangChain for RAG implementation
+Context assembly from multiple sources
+System prompts with ontological context
+
+
+Query Processing
+
+Entity and relationship detection
+Domain-specific query understanding
+Query analysis and contextual interpretation
+
+
+
+Visualization Technologies
+
+Graph Visualization
+
+PyVis for interactive network visualizations
+Multiple layout algorithms (force-directed, hierarchical, radial, circular)
+Node and edge styling based on entity types
+Interactive exploration features
+
+
+Data Visualization
+
+Plotly for charts and statistical visualizations
+Sankey diagrams for information flow representation
+Bar charts, pie charts, and radar charts
+Comparative visualization techniques
+
+
+Path Visualization
+
+Step-by-step path visualization
+Relationship highlighting
+Semantic path explanation
+
+
+
+Web Application Technologies
+
+Frontend Framework
+
+Streamlit for interactive web interface
+Responsive UI components
+Multi-page application structure
+Session state management
+
+
+Data Processing
+
+Pandas for data manipulation and analysis
+DataFrame operations for statistics
+Data transformation for visualization
+
+
+
+System Architecture
+
+Component Architecture
+
+Modular design with specialized components
+Clear separation of concerns
+Component-based communication
+
+
+Data Flow Pipeline
+
+Pipeline architecture for processing queries
+Comparative analysis between traditional and enhanced RAG
+Multi-stage processing (ontology loading, indexing, querying, generation)
+
+
+
+Performance Optimization
+
+Memory Management
+
+Selective loading of graph components
+Distance-limited graph traversal
+Visualization optimization for large graphs
+
+
+Computational Efficiency
+
+Optimized path finding algorithms
+Subgraph extraction for relevant components
+Focus on entities mentioned in queries
