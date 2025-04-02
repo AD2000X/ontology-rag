@@ -1,0 +1,278 @@
+# Overview
+The Knowledge Representation and Management aspects of this system provide a strong foundation for the ontology-enhanced RAG approach. By using a formal ontology with class hierarchies, relationship definitions, business rules, and concrete instances, the system can perform more sophisticated reasoning than traditional RAG approaches. The combination of structured knowledge representation with NetworkX's graph capabilities enables semantic path finding, contextual retrieval, and multi-hop reasoning.
+
+Knowledge Representation and Management in Ontology-Enhanced RAG
+This section explores how the repository implements knowledge representation and management through ontology modeling. The system uses a structured approach to represent domain knowledge, relationships, and rules.
+Ontology Modeling
+JSON-based Ontology Representation
+The system uses a JSON file (data/enterprise_ontology.json) as the primary data source for the ontology. This provides a structured, human-readable, and machine-processable way to define all ontology components.
+The JSON structure consists of four main sections:
+
+classes: Defines entity types and their properties
+relationships: Defines connections between entity types
+rules: Defines business constraints
+instances: Defines concrete examples of entities
+
+The OntologyManager class in src/ontology_manager.py handles loading and parsing this JSON structure:
+pythonCopydef __init__(self, ontology_path: str):
+    """
+    Initialize the ontology manager with a path to the ontology JSON file.
+    
+    Args:
+        ontology_path: Path to the JSON file containing the ontology model
+    """
+    self.ontology_path = ontology_path
+    self.ontology_data = self._load_ontology()
+    self.graph = nx.MultiDiGraph()
+    self._build_graph()
+    
+def _load_ontology(self) -> Dict:
+    """Load the ontology from the JSON file."""
+    with open(self.ontology_path, 'r') as f:
+        return json.load(f)
+Class Hierarchy with Inheritance Relationships
+The ontology supports class hierarchies through parent-child relationships using the subClassOf property. This allows for inheritance of properties and relationships, creating a taxonomic structure.
+Example from the JSON file:
+jsonCopy"classes": {
+  "FinancialEntity": {
+    "description": "An entity related to financial matters",
+    "subClassOf": "Entity",
+    "properties": ["amount", "currency", "fiscalYear", "quarter", "transactionDate"]
+  },
+  "Budget": {
+    "description": "A financial plan for a specified period",
+    "subClassOf": "FinancialEntity",
+    "properties": ["budgetId", "period", "departmentId", "plannedAmount", "actualAmount", "variance"]
+  }
+}
+The code builds this hierarchy in the graph:
+pythonCopydef _build_graph(self):
+    """Build the ontology graph from the JSON data."""
+    # Add classes
+    for class_id, class_data in self.ontology_data["classes"].items():
+        self.graph.add_node(
+            class_id,
+            type="class",
+            description=class_data.get("description", ""),
+            properties=class_data.get("properties", [])
+        )
+
+        # Handle subclass relations
+        if "subClassOf" in class_data:
+            parent = class_data["subClassOf"]
+            self.graph.add_edge(class_id, parent, type="subClassOf")
+The system can traverse the class hierarchy using methods like _get_all_subclasses:
+pythonCopydef _get_all_subclasses(self, class_name: str) -> List[str]:
+    """Recursively get all subclasses of a given class."""
+    subclasses = []
+    direct_subclasses = [
+        src for src, dst, data in self.graph.edges(data=True)
+        if dst == class_name and data.get("type") == "subClassOf"
+    ]
+    
+    for subclass in direct_subclasses:
+        subclasses.append(subclass)
+        subclasses.extend(self._get_all_subclasses(subclass))
+        
+    return subclasses
+Formal Relationship Definitions with Domain and Range Constraints
+Relationships in the ontology are not just simple connections; they have formal definitions including domain (source class), range (target class), cardinality, and inverse relationship names.
+Example relationship definition:
+jsonCopy"relationships": [
+  {
+    "name": "ownedBy",
+    "domain": "Product",
+    "range": "Department",
+    "inverse": "owns",
+    "cardinality": "many-to-one",
+    "description": "Indicates which department owns a product"
+  }
+]
+While the graph construction doesn't directly use these relationship definitions for edge creation, they serve as schema-level metadata:
+pythonCopy# Add relationships (schema-level only, no edge added yet)
+for rel in self.ontology_data.get("relationships", []):
+    pass  # schema relationships are used for metadata, not edges
+Instead, the actual relationship instances are created when adding instances to the graph:
+pythonCopy# Add relationship edges if any
+for rel in instance.get("relationships", []):
+    target = rel.get("target")
+    rel_type = rel.get("type")
+    if target and rel_type:
+        self.graph.add_edge(instance_id, target, type=rel_type)
+For querying based on these relationships, the system provides methods like:
+pythonCopydef query_by_relationship(self, source_type: str, relationship: str, target_type: str) -> List[Dict]:
+    """
+    Query for instances connected by a specific relationship.
+    
+    Args:
+        source_type: Type of the source entity
+        relationship: Type of relationship
+        target_type: Type of the target entity
+        
+    Returns:
+        A list of matching relationship dictionaries
+    """
+    results = []
+    
+    # Get all instances of the source type
+    source_instances = self.get_instances_of_class(source_type)
+    
+    for source_id in source_instances:
+        # Get relationships of the specified type
+        relationships = self.get_relationships(source_id, relationship)
+        
+        for rel in relationships:
+            if rel["direction"] == "outgoing" and "target" in rel:
+                target_id = rel["target"]
+                target_data = self.graph.nodes[target_id]
+                
+                # Check if the target is of the right type
+                if (target_data.get("type") == "instance" and 
+                    target_data.get("class_type") == target_type):
+                    results.append({
+                        "source": source_id,
+                        "source_properties": self.graph.nodes[source_id].get("properties", {}),
+                        "relationship": relationship,
+                        "target": target_id,
+                        "target_properties": target_data.get("properties", {})
+                    })
+    
+    return results
+Business Rules and Constraints
+The ontology includes formal business rules that constrain the knowledge model. These are defined in the rules section of the JSON.
+Example rule:
+jsonCopy"rules": [
+  {
+    "id": "rule9",
+    "description": "Critical support tickets must be assigned to Senior employees or managers",
+    "constraint": "FORALL ?t WHERE type(?t, SupportTicket) AND property(?t, priority, 'Critical') AND relationship(?t, assignedTo, ?e) MUST type(?e, Manager) OR (type(?e, Employee) AND property(?e, experienceLevel, 'Senior'))"
+  }
+]
+While the repository doesn't include a full rule engine implementation, it does use these rules for path finding and semantic relevance. For example, in the find_relevant_rules_for_path function in visualization.py:
+pythonCopydef find_relevant_rules_for_path(path, ontology_manager):
+    """Find business rules relevant to the entities and relationships in a path."""
+    rules = ontology_manager.ontology_data.get("rules", [])
+    if not rules:
+        return []
+    
+    # Extract entities and relationships from the path
+    entity_types = set()
+    relationship_types = set()
+    
+    for edge in path:
+        source = edge["source"]
+        target = edge["target"]
+        relation = edge["type"]
+        
+        # Get entity info
+        source_info = ontology_manager.get_entity_info(source)
+        target_info = ontology_manager.get_entity_info(target)
+        
+        # Add entity types
+        if "class_type" in source_info:
+            entity_types.add(source_info["class_type"])
+        
+        if "class_type" in target_info:
+            entity_types.add(target_info["class_type"])
+        
+        # Add relationship type
+        relationship_types.add(relation)
+    
+    # Find rules that mention these entities or relationships
+    relevant_rules = []
+    
+    for rule in rules:
+        rule_text = json.dumps(rule).lower()
+        
+        # Check if rule mentions any of the entity types or relationships
+        is_relevant = False
+        
+        for entity_type in entity_types:
+            if entity_type.lower() in rule_text:
+                is_relevant = True
+                break
+        
+        if not is_relevant:
+            for rel_type in relationship_types:
+                if rel_type.lower() in rule_text:
+                    is_relevant = True
+                    break
+        
+        if is_relevant:
+            relevant_rules.append(rule)
+    
+    return relevant_rules
+Instance Data for Concrete Examples
+The ontology includes concrete instances of the defined classes, creating a populated knowledge graph.
+Example instance definition:
+jsonCopy"instances": [
+  {
+    "id": "product1",
+    "type": "Product",
+    "properties": {
+      "name": "Enterprise Analytics Suite",
+      "version": "2.1",
+      "status": "Active"
+    },
+    "relationships": [
+      {"type": "ownedBy", "target": "dept1"},
+      {"type": "hasLifecycle", "target": "lifecycle1"},
+      {"type": "optimizedBy", "target": "feedback1"}
+    ]
+  }
+]
+These instances are added to the graph:
+pythonCopy# Add instances
+for instance in self.ontology_data.get("instances", []):
+    instance_id = instance["id"]
+    class_type = instance["type"]
+    properties = instance.get("properties", {})
+
+    # Add the instance node
+    self.graph.add_node(
+        instance_id,
+        type="instance",
+        class_type=class_type,
+        properties=properties
+    )
+
+    # Link instance to its class
+    self.graph.add_edge(instance_id, class_type, type="instanceOf")
+
+    # Add relationship edges if any
+    for rel in instance.get("relationships", []):
+        target = rel.get("target")
+        rel_type = rel.get("type")
+        if target and rel_type:
+            self.graph.add_edge(instance_id, target, type=rel_type)
+The repository provides methods to retrieve instance information:
+pythonCopydef get_entity_info(self, entity_id: str) -> Dict:
+    """
+    Get detailed information about an entity.
+    
+    Args:
+        entity_id: The ID of the entity
+        
+    Returns:
+        A dictionary with entity information
+    """
+    if entity_id not in self.graph:
+        return {}
+    
+    node_data = self.graph.nodes[entity_id]
+    entity_type = node_data.get("type")
+    
+    if entity_type == "instance":
+        # Get class information
+        class_type = node_data.get("class_type")
+        class_info = self.ontology_data["classes"].get(class_type, {})
+        
+        return {
+            "id": entity_id,
+            "type": entity_type,
+            "class": class_type,
+            "class_description": class_info.get("description", ""),
+            "properties": node_data.get("properties", {}),
+            "relationships": self.get_relationships(entity_id)
+        }
+    # ... more code for other entity types
