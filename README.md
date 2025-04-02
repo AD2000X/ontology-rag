@@ -9,16 +9,7 @@ app_file: app.py
 pinned: false
 ---
 
----
-title: Ontology-Enhanced RAG System
-emoji: 🔍
-colorFrom: indigo
-colorTo: blue
-sdk: streamlit
-sdk_version: 1.44.0
-app_file: app.py
-pinned: false
----
+https://github.com/AD2000X/ontology-rag/blob/main/images/pipeline.jpg
 
 # Ontology-Enhanced RAG System
 
