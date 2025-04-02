@@ -1,0 +1,468 @@
+# Overvieww
+The Vector-Based Retrieval components of this system provide a solid foundation for semantic search and information retrieval. By combining FAISS for efficient vector similarity search, OpenAI embeddings for high-quality text vectorization, configurable chunking strategies, and multiple retrieval approaches, the system enables sophisticated information retrieval that goes beyond simple keyword matching.
+What makes this implementation particularly powerful is the integration of traditional vector-based retrieval with graph-based semantic knowledge through the ontology. This hybrid approach enables the system to retrieve information based not only on textual similarity but also on semantic relationships and structured knowledge, leading to more contextually rich and logically consistent answers.
+
+Retrieval Technologies in Ontology-Enhanced RAG
+This section explores how the repository implements vector-based retrieval techniques as a foundation for the ontology-enhanced RAG system.
+Vector-Based Retrieval
+The system uses a combination of advanced vector retrieval technologies to enable efficient semantic search. The primary implementation is in the SemanticRetriever class in src/semantic_retriever.py.
+FAISS for Vector Similarity Search
+The system uses FAISS (Facebook AI Similarity Search), a library for efficient similarity search and clustering of dense vectors, to perform quick and scalable retrieval of relevant documents based on vector similarity.
+pythonCopy# src/semantic_retriever.py
+
+from langchain_community.vectorstores import FAISS
+from langchain.schema import Document
+
+# ...
+
+def __init__(
+    self, 
+    ontology_manager: OntologyManager, 
+    embeddings_model = None,
+    text_chunks: Optional[List[str]] = None
+):
+    """
+    Initialize the semantic retriever.
+    
+    Args:
+        ontology_manager: The ontology manager instance
+        embeddings_model: The embeddings model to use (defaults to OpenAIEmbeddings)
+        text_chunks: Optional list of text chunks to add to the vector store
+    """
+    self.ontology_manager = ontology_manager
+    self.embeddings = embeddings_model or OpenAIEmbeddings()
+    
+    # Create a vector store with the text representation of the ontology
+    ontology_text = ontology_manager.get_text_representation()
+    self.ontology_chunks = self._split_text(ontology_text)
+    
+    # Add additional text chunks if provided
+    if text_chunks:
+        self.text_chunks = text_chunks
+        all_chunks = self.ontology_chunks + text_chunks
+    else:
+        self.text_chunks = []
+        all_chunks = self.ontology_chunks
+    
+    # Convert to Document objects for FAISS
+    documents = [Document(page_content=chunk, metadata={"source": "ontology" if i < len(self.ontology_chunks) else "text"}) 
+                for i, chunk in enumerate(all_chunks)]
+    
+    # Create the vector store
+    self.vector_store = FAISS.from_documents(documents, self.embeddings)
+FAISS is used for similarity search in the basic retrieval method:
+pythonCopy# src/semantic_retriever.py
+
+def retrieve(self, query: str, k: int = 4, include_ontology_context: bool = True) -> List[Document]:
+    """
+    Retrieve relevant documents using a hybrid approach.
+    
+    Args:
+        query: The query string
+        k: Number of documents to retrieve
+        include_ontology_context: Whether to include additional ontology context
+        
+    Returns:
+        A list of retrieved documents
+    """
+    # Get semantic context from the ontology
+    if include_ontology_context:
+        ontology_context = self.ontology_manager.get_semantic_context(query)
+    else:
+        ontology_context = []
+    
+    # Perform vector similarity search
+    vector_results = self.vector_store.similarity_search(query, k=k)
+    
+    # Combine results
+    combined_results = vector_results
+    
+    # Add ontology context as additional documents
+    for i, context in enumerate(ontology_context):
+        combined_results.append(Document(
+            page_content=context,
+            metadata={"source": "ontology_context", "context_id": i}
+        ))
+    
+    return combined_results
+It's also used in the comparative analysis demonstration:
+pythonCopy# app.py
+
+def run_rag_demo():
+    st.title("Ontology Enhanced RAG Demonstration")
+    
+    query = st.text_input(
+        "Enter a question to compare RAG methods:",
+        "How does customer feedback influence product development?"
+    )
+
+    if query:
+        col1, col2 = st.columns(2)
+        
+        with st.spinner("Run two RAG methods..."):
+            # Traditional RAG
+            with col1:
+                st.subheader("Traditional RAG")
+                vector_docs = semantic_retriever.vector_store.similarity_search(query, k=k_val)
+                vector_context = "\n\n".join([doc.page_content for doc in vector_docs])
+                # ... more code ...
+OpenAI Embeddings for Text Vectorization
+The system uses OpenAI's embedding models to convert text chunks into vector representations for semantic similarity search.
+pythonCopy# src/semantic_retriever.py
+
+from langchain_community.embeddings import OpenAIEmbeddings
+
+# ...
+
+def __init__(
+    self, 
+    ontology_manager: OntologyManager, 
+    embeddings_model = None,
+    text_chunks: Optional[List[str]] = None
+):
+    # ...
+    self.embeddings = embeddings_model or OpenAIEmbeddings()
+    # ...
+The OpenAI embedding model is used to generate vector representations of both the ontology chunks and any additional text chunks. These vectors are then stored in the FAISS index for efficient retrieval.
+The system is designed to be flexible with regard to the embedding model used. While it defaults to OpenAIEmbeddings, the constructor allows for injection of alternative embedding models, enabling easy testing and comparison of different embedding approaches.
+Chunking with Configurable Size and Overlap
+The system implements a text chunking strategy with configurable chunk size and overlap to balance between context preservation and vector efficiency.
+pythonCopy# src/semantic_retriever.py
+
+def _split_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+    """Split text into chunks for embedding."""
+    chunks = []
+    text_length = len(text)
+    
+    for i in range(0, text_length, chunk_size - overlap):
+        chunk = text[i:i + chunk_size]
+        if len(chunk) < 50:  # Skip very small chunks
+            continue
+        chunks.append(chunk)
+        
+    return chunks
+This chunking method:
+
+Uses a sliding window approach with configurable overlap between chunks
+Allows for parameter tuning of chunk size and overlap
+Includes a minimum chunk size check to filter out very small chunks
+Creates a balance between comprehensive context and computational efficiency
+
+The chunking is applied to the text representation of the ontology, which is generated by the OntologyManager:
+pythonCopy# src/ontology_manager.py
+
+def get_text_representation(self) -> str:
+    """
+    Generate a text representation of the ontology for embedding.
+    
+    Returns:
+        A string containing the textual representation of the ontology
+    """
+    text_chunks = []
+    
+    # Class definitions
+    for class_id, class_data in self.ontology_data["classes"].items():
+        chunk = f"Class: {class_id}\n"
+        chunk += f"Description: {class_data.get('description', '')}\n"
+        
+        if "subClassOf" in class_data:
+            chunk += f"{class_id} is a subclass of {class_data['subClassOf']}.\n"
+        
+        if "properties" in class_data:
+            chunk += f"{class_id} has properties: {', '.join(class_data['properties'])}.\n"
+        
+        text_chunks.append(chunk)
+    
+    # Relationship definitions
+    for rel in self.ontology_data["relationships"]:
+        chunk = f"Relationship: {rel['name']}\n"
+        chunk += f"Domain: {rel['domain']}, Range: {rel['range']}\n"
+        chunk += f"Description: {rel.get('description', '')}\n"
+        chunk += f"Cardinality: {rel.get('cardinality', 'many-to-many')}\n"
+        
+        if "inverse" in rel:
+            chunk += f"The inverse relationship is {rel['inverse']}.\n"
+        
+        text_chunks.append(chunk)
+    
+    # Rules
+    for rule in self.ontology_data.get("rules", []):
+        chunk = f"Rule: {rule.get('id', '')}\n"
+        chunk += f"Description: {rule.get('description', '')}\n"
+        text_chunks.append(chunk)
+    
+    # Instance data
+    for instance in self.ontology_data["instances"]:
+        chunk = f"Instance: {instance['id']}\n"
+        chunk += f"Type: {instance['type']}\n"
+        
+        # Properties
+        if "properties" in instance:
+            props = []
+            for key, value in instance["properties"].items():
+                if isinstance(value, list):
+                    props.append(f"{key}: {', '.join(str(v) for v in value)}")
+                else:
+                    props.append(f"{key}: {value}")
+            
+            if props:
+                chunk += "Properties:\n- " + "\n- ".join(props) + "\n"
+        
+        # Relationships
+        if "relationships" in instance:
+            rels = []
+            for rel in instance["relationships"]:
+                rels.append(f"{rel['type']} {rel['target']}")
+            
+            if rels:
+                chunk += "Relationships:\n- " + "\n- ".join(rels) + "\n"
+        
+        text_chunks.append(chunk)
+    
+    return "\n\n".join(text_chunks)
+Multiple Retrieval Strategies (Similarity, Hybrid)
+The system implements multiple retrieval strategies to enhance the quality and relevance of retrieved information.
+Basic Vector Similarity Retrieval
+pythonCopy# src/semantic_retriever.py
+
+def retrieve(self, query: str, k: int = 4, include_ontology_context: bool = True) -> List[Document]:
+    """
+    Retrieve relevant documents using a hybrid approach.
+    
+    Args:
+        query: The query string
+        k: Number of documents to retrieve
+        include_ontology_context: Whether to include additional ontology context
+        
+    Returns:
+        A list of retrieved documents
+    """
+    # Get semantic context from the ontology
+    if include_ontology_context:
+        ontology_context = self.ontology_manager.get_semantic_context(query)
+    else:
+        ontology_context = []
+    
+    # Perform vector similarity search
+    vector_results = self.vector_store.similarity_search(query, k=k)
+    
+    # Combine results
+    combined_results = vector_results
+    
+    # Add ontology context as additional documents
+    for i, context in enumerate(ontology_context):
+        combined_results.append(Document(
+            page_content=context,
+            metadata={"source": "ontology_context", "context_id": i}
+        ))
+    
+    return combined_results
+Enhanced Retrieval with Semantic Paths
+pythonCopy# src/semantic_retriever.py
+
+def retrieve_with_paths(self, query: str, k: int = 4) -> Dict[str, Any]:
+    """
+    Enhanced retrieval that includes semantic paths between entities.
+    
+    Args:
+        query: The query string
+        k: Number of documents to retrieve
+        
+    Returns:
+        A dictionary containing retrieved documents and semantic paths
+    """
+    # Basic retrieval
+    basic_results = self.retrieve(query, k)
+    
+    # Extract potential entities from the query (simplified approach)
+    # A more sophisticated approach would use NER or entity linking
+    entity_types = ["Product", "Department", "Employee", "Manager", "Customer", "Feedback"]
+    query_words = query.lower().split()
+    
+    potential_entities = []
+    for entity_type in entity_types:
+        if entity_type.lower() in query_words:
+            # Get instances of this type
+            instances = self.ontology_manager.get_instances_of_class(entity_type)
+            if instances:
+                # Just take the first few for demonstration
+                potential_entities.extend(instances[:2])
+    
+    # Find paths between potential entities
+    paths = []
+    if len(potential_entities) >= 2:
+        for i in range(len(potential_entities)):
+            for j in range(i+1, len(potential_entities)):
+                source = potential_entities[i]
+                target = potential_entities[j]
+                
+                # Find paths between these entities
+                entity_paths = self.ontology_manager.find_paths(source, target, max_length=3)
+                
+                if entity_paths:
+                    for path in entity_paths:
+                        # Convert path to text
+                        path_text = self._path_to_text(path)
+                        paths.append({
+                            "source": source,
+                            "target": target,
+                            "path": path,
+                            "text": path_text
+                        })
+    
+    # Convert paths to documents
+    path_documents = []
+    for i, path_info in enumerate(paths):
+        path_documents.append(Document(
+            page_content=path_info["text"],
+            metadata={
+                "source": "semantic_path",
+                "path_id": i,
+                "source_entity": path_info["source"],
+                "target_entity": path_info["target"]
+            }
+        ))
+    
+    return {
+        "documents": basic_results + path_documents,
+        "paths": paths
+    }
+Property-Based Search
+The system also includes a specialized method for searching instances by property values:
+pythonCopy# src/semantic_retriever.py
+
+def search_by_property(self, class_type: str, property_name: str, property_value: str) -> List[Document]:
+    """
+    Search for instances of a class with a specific property value.
+    
+    Args:
+        class_type: The class to search in
+        property_name: The property name to match
+        property_value: The property value to match
+        
+    Returns:
+        A list of matched entities as documents
+    """
+    instances = self.ontology_manager.get_instances_of_class(class_type)
+    
+    results = []
+    for instance_id in instances:
+        entity_info = self.ontology_manager.get_entity_info(instance_id)
+        if "properties" in entity_info:
+            properties = entity_info["properties"]
+            if property_name in properties:
+                # Simple string matching (could be enhanced with fuzzy matching)
+                if str(properties[property_name]).lower() == property_value.lower():
+                    # Convert to document
+                    doc_content = f"Instance: {instance_id}\n"
+                    doc_content += f"Type: {class_type}\n"
+                    doc_content += "Properties:\n"
+                    
+                    for prop_name, prop_value in properties.items():
+                        doc_content += f"- {prop_name}: {prop_value}\n"
+                    
+                    results.append(Document(
+                        page_content=doc_content,
+                        metadata={
+                            "source": "property_search",
+                            "instance_id": instance_id,
+                            "class_type": class_type
+                        }
+                    ))
+    
+    return results
+Semantic Context Enrichment
+The system enhances retrieval with semantic context from the ontology, implemented in the OntologyManager:
+pythonCopy# src/ontology_manager.py
+
+def get_semantic_context(self, query: str) -> List[str]:
+    """
+    Retrieve relevant semantic context from the ontology based on a query.
+    
+    This method identifies entities and relationships mentioned in the query
+    and returns contextual information about them from the ontology.
+    
+    Args:
+        query: The query string to analyze
+        
+    Returns:
+        A list of text chunks providing relevant ontological context
+    """
+    # This is a simple implementation - a more sophisticated one would use
+    # entity recognition and semantic parsing
+    
+    query_lower = query.lower()
+    context_chunks = []
+    
+    # Check for class mentions
+    for class_id in self.get_classes():
+        if class_id.lower() in query_lower:
+            # Add class information
+            class_data = self.ontology_data["classes"][class_id]
+            chunk = f"Class {class_id}: {class_data.get('description', '')}\n"
+            
+            # Add subclass information
+            if "subClassOf" in class_data:
+                parent = class_data["subClassOf"]
+                chunk += f"{class_id} is a subclass of {parent}.\n"
+            
+            # Add property information
+            if "properties" in class_data:
+                chunk += f"{class_id} has properties: {', '.join(class_data['properties'])}.\n"
+            
+            context_chunks.append(chunk)
+            
+            # Also add some instance examples
+            instances = self.get_instances_of_class(class_id, include_subclasses=False)[:3]
+            if instances:
+                instance_chunk = f"Examples of {class_id}:\n"
+                for inst_id in instances:
+                    props = self.graph.nodes[inst_id].get("properties", {})
+                    if "name" in props:
+                        instance_chunk += f"- {inst_id} ({props['name']})\n"
+                    else:
+                        instance_chunk += f"- {inst_id}\n"
+                context_chunks.append(instance_chunk)
+    
+    # Check for relationship mentions
+    for rel in self.ontology_data["relationships"]:
+        if rel["name"].lower() in query_lower:
+            chunk = f"Relationship {rel['name']}: {rel.get('description', '')}\n"
+            chunk += f"This relationship connects {rel['domain']} to {rel['range']}.\n"
+            
+            # Add examples
+            examples = self.query_by_relationship(rel['domain'], rel['name'], rel['range'])[:3]
+            if examples:
+                chunk += "Examples:\n"
+                for ex in examples:
+                    source_props = ex["source_properties"]
+                    target_props = ex["target_properties"]
+                    
+                    source_name = source_props.get("name", ex["source"])
+                    target_name = target_props.get("name", ex["target"])
+                    
+                    chunk += f"- {source_name} {rel['name']} {target_name}\n"
+            
+            context_chunks.append(chunk)
+    
+    # If we found nothing specific, add general ontology info
+    if not context_chunks:
+        # Add information about top-level classes
+        top_classes = [c for c, data in self.ontology_data["classes"].items() 
+                      if "subClassOf" not in data or data["subClassOf"] == "Entity"]
+        
+        if top_classes:
+            chunk = "Main classes in the ontology:\n"
+            for cls in top_classes:
+                desc = self.ontology_data["classes"][cls].get("description", "")
+                chunk += f"- {cls}: {desc}\n"
+            context_chunks.append(chunk)
+        
+        # Add information about key relationships
+        if self.ontology_data["relationships"]:
+            chunk = "Key relationships in the ontology:\n"
+            for rel in self.ontology_data["relationships"][:5]:  # Top 5 relationships
+                chunk += f"- {rel['name']}: {rel.get('description', '')}\n"
+            context_chunks.append(chunk)
+    
+    return context_chunks
