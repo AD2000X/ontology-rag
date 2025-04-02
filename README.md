@@ -26,7 +26,7 @@ pinned: false
 
 This repository contains an advanced Retrieval-Augmented Generation (RAG) system that integrates structured ontologies with language models. The system demonstrates how formal ontological knowledge representation can enhance traditional vector-based retrieval methods to provide more accurate, contextually rich, and logically consistent answers to user queries.
 
-![Ontology-RAG System](https://i.imgur.com/7dQZV7D.png)
+![Ontology-RAG System](https://github.com/AD2000X/ontology-rag/blob/main/images/11.jpg)
 
 The project implements a sophisticated architecture that combines:
 
@@ -56,7 +56,8 @@ This application uses a comprehensive tech stack:
 
 The system provides a side-by-side comparison of traditional RAG and ontology-enhanced RAG:
 
-![RAG Comparison Demo](https://i.imgur.com/cxN2rUp.png)
+![RAG Comparison Demo](https://github.com/AD2000X/ontology-rag/blob/main/images/12.jpg)
+![RAG Comparison Demo](https://github.com/AD2000X/ontology-rag/blob/main/images/13.jpg)
 
 - **Traditional RAG**: Uses only vector similarity to retrieve relevant documents
 - **Ontology-Enhanced RAG**: Combines vector search with semantic relationship traversal
@@ -72,7 +73,8 @@ Example usage:
 
 Interactive visualization of the ontology as a knowledge graph:
 
-![Knowledge Graph](https://i.imgur.com/NtEhPDW.png)
+![Knowledge Graph](https://github.com/AD2000X/ontology-rag/blob/main/images/21.jpg)
+![Knowledge Graph](https://github.com/AD2000X/ontology-rag/blob/main/images/22.jpg)
 
 - **Multiple Layout Algorithms**: Force-directed, hierarchical, radial, and circular layouts
 - **Entity Focus**: Zoom in on specific entities and their relationships
@@ -89,7 +91,17 @@ Example usage:
 
 Tools for exploring and understanding the ontology's structure:
 
-![Ontology Structure](https://i.imgur.com/qjVu2uH.png)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/31.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/32.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/33.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/34.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/35.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/36.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/37.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/38.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/39.jpg)
+![Ontology Structure](https://github.com/AD2000X/ontology-rag/blob/main/images/391.jpg)
+
 
 - **Class Hierarchy Visualization**: View the ontology's class inheritance structure
 - **Class Statistics**: See instance distribution across classes
@@ -106,7 +118,8 @@ Example usage:
 
 Detailed view of individual entities and their connections:
 
-![Entity Exploration](https://i.imgur.com/fHyKZ8S.png)
+![Entity Exploration](https://github.com/AD2000X/ontology-rag/blob/main/images/41.jpg)
+![Entity Exploration](https://github.com/AD2000X/ontology-rag/blob/main/images/42.jpg)
 
 - **Entity Information Cards**: View all properties and relationships of specific entities
 - **Relationship Graphs**: Visualize how an entity connects to others
@@ -124,7 +137,11 @@ Example usage:
 
 Visualization of paths between entities with meaningful relationships:
 
-![Semantic Paths](https://i.imgur.com/YQJejkX.png)
+![Semantic Paths](https://github.com/AD2000X/ontology-rag/blob/main/images/51.jpg)
+![Semantic Paths](https://github.com/AD2000X/ontology-rag/blob/main/images/52.jpg)
+![Semantic Paths](https://github.com/AD2000X/ontology-rag/blob/main/images/53.jpg)
+![Semantic Paths](https://github.com/AD2000X/ontology-rag/blob/main/images/54.jpg)
+![Semantic Paths](https://github.com/AD2000X/ontology-rag/blob/main/images/55.jpg)
 
 - **Path Discovery**: Find and visualize all paths between selected entities
 - **Path Explanation**: Step-by-step breakdown of each path
@@ -141,7 +158,8 @@ Example usage:
 
 Explanation of the RAG system's reasoning process:
 
-![Reasoning Trace](https://i.imgur.com/E8ZbELF.png)
+![Reasoning Trace](https://github.com/AD2000X/ontology-rag/blob/main/images/61.jpg)
+![Reasoning Trace](https://github.com/AD2000X/ontology-rag/blob/main/images/62.jpg)
 
 - **Query Analysis**: Entity and relationship detection in user queries
 - **Information Flow**: Sankey diagrams showing how information is used
@@ -157,7 +175,10 @@ Example usage:
 
 In-depth analysis of both RAG approaches:
 
-![Comparative Analysis](https://i.imgur.com/tRlVJeO.png)
+![Comparative Analysis](https://github.com/AD2000X/ontology-rag/blob/main/images/71.jpg)
+![Comparative Analysis](https://github.com/AD2000X/ontology-rag/blob/main/images/72.jpg)
+![Comparative Analysis](https://github.com/AD2000X/ontology-rag/blob/main/images/73.jpg)
+![Comparative Analysis](https://github.com/AD2000X/ontology-rag/blob/main/images/74.jpg)
 
 - **Performance Metrics**: Response time, context tokens, retrieved documents
 - **Retrieval Source Comparison**: Distribution of information sources
