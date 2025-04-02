@@ -9,9 +9,12 @@ app_file: app.py
 pinned: false
 ---
 
-![Ontology-RAG System](https://github.com/AD2000X/ontology-rag/blob/main/images/pipeline.jpg)
 
 # Ontology-Enhanced RAG System
+
+
+![Ontology-RAG System](https://github.com/AD2000X/ontology-rag/blob/main/images/pipeline.jpg)
+
 
 ## Project Overview
 
