@@ -10,8 +10,7 @@ pinned: false
 ---
 
 Demo: 
-
-# Ontology-Enhanced RAG System![Ontology-RAG System](https://huggingface.co/spaces/AD2000X/Ontology-RAG-Demo)
+https://huggingface.co/spaces/AD2000X/Ontology-RAG-Demo
 
 ![Ontology-RAG System](https://github.com/AD2000X/ontology-rag/blob/main/images/pipeline.jpg)
 
