@@ -435,6 +435,6 @@ This project demonstrates the integration of ontological knowledge with RAG syst
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-##
-Reference:
+## Reference
+
 Sharma, K., Kumar, P. and Li, Y., 2024. OG-RAG: Ontology-Grounded Retrieval-Augmented Generation For Large Language Models. arXiv preprint arXiv:2412.15235. Available at: https://arxiv.org/abs/2412.15235 [Accessed 16 Apr. 2025].
