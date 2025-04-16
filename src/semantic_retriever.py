@@ -11,7 +11,8 @@ class SemanticRetriever:
     """
     Enhanced retrieval system that combines vector search with ontology awareness.
     """
-    
+
+    # Initialization vector storage
     def __init__(
         self, 
         ontology_manager: OntologyManager, 
@@ -60,7 +61,8 @@ class SemanticRetriever:
             chunks.append(chunk)
             
         return chunks
-    
+
+    # Hybrid search method, combining vector retrieval and ontology context
     def retrieve(self, query: str, k: int = 4, include_ontology_context: bool = True) -> List[Document]:
         """
         Retrieve relevant documents using a hybrid approach.
@@ -93,7 +95,8 @@ class SemanticRetriever:
             ))
         
         return combined_results
-    
+
+    # Multi-hop path retrieval, contains semantic paths between entities
     def retrieve_with_paths(self, query: str, k: int = 4) -> Dict[str, Any]:
         """
         Enhanced retrieval that includes semantic paths between entities.
@@ -122,7 +125,7 @@ class SemanticRetriever:
                     # Just take the first few for demonstration
                     potential_entities.extend(instances[:2])
         
-        # Find paths between potential entities
+        # Feature Search
         paths = []
         if len(potential_entities) >= 2:
             for i in range(len(potential_entities)):
