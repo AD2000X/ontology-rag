@@ -21,12 +21,14 @@ class OntologyManager:
         self.ontology_data = self._load_ontology()
         self.graph = nx.MultiDiGraph()
         self._build_graph()
-        
+    
+    # Load ontology
     def _load_ontology(self) -> Dict:
         """Load the ontology from the JSON file."""
         with open(self.ontology_path, 'r') as f:
             return json.load(f)
-    
+
+    # Graph Construction
     def _build_graph(self):
         """Build the ontology graph from the JSON data."""
         # Add classes
@@ -38,16 +40,16 @@ class OntologyManager:
                 properties=class_data.get("properties", [])
             )
     
-            # Handle subclass relations
+            # Handle subclass relations, key step 1
             if "subClassOf" in class_data:
                 parent = class_data["subClassOf"]
                 self.graph.add_edge(class_id, parent, type="subClassOf")
     
-        # Add relationships (schema-level only, no edge added yet)
+        # Add relationships (schema-level only, no edge added yet), , key step 2
         for rel in self.ontology_data.get("relationships", []):
             pass  # schema relationships are used for metadata, not edges
     
-        # Add instances
+        # Add instances, key step 3
         for instance in self.ontology_data.get("instances", []):
             instance_id = instance["id"]
             class_type = instance["type"]
@@ -71,11 +73,12 @@ class OntologyManager:
                 if target and rel_type:
                     self.graph.add_edge(instance_id, target, type=rel_type)
 
-    
+    # Get all category names
     def get_classes(self) -> List[str]:
         """Return a list of all class names in the ontology."""
         return list(self.ontology_data["classes"].keys())
-    
+
+    # Building a Category Hierarchy Dictionary
     def get_class_hierarchy(self) -> Dict[str, List[str]]:
         """Return a dictionary mapping each class to its subclasses."""
         hierarchy = {}
@@ -89,7 +92,7 @@ class OntologyManager:
                     hierarchy[parent].append(class_id)
         
         return hierarchy
-    
+    # Instances Retrieval
     def get_instances_of_class(self, class_name: str, include_subclasses: bool = True) -> List[str]:
         """
         Get all instances of a given class.
@@ -120,7 +123,7 @@ class OntologyManager:
                 n for n, attr in self.graph.nodes(data=True)
                 if attr.get("type") == "instance" and attr.get("class_type") == class_name
             ]
-    
+    # Recursively get all subclasses of a specific class
     def _get_all_subclasses(self, class_name: str) -> List[str]:
         """Recursively get all subclasses of a given class."""
         subclasses = []
@@ -134,7 +137,7 @@ class OntologyManager:
             subclasses.extend(self._get_all_subclasses(subclass))
             
         return subclasses
-    
+    # Relationships Retrieval
     def get_relationships(self, entity_id: str, relationship_type: Optional[str] = None) -> List[Dict]:
         """
         Get all relationships for a given entity, optionally filtered by type.
@@ -171,7 +174,8 @@ class OntologyManager:
                     })
                     
         return relationships
-    
+
+    # Path Retrieval
     def find_paths(self, source_id: str, target_id: str, max_length: int = 3) -> List[List[Dict]]:
         """
         Find all paths between two entities up to a maximum length.
@@ -206,7 +210,8 @@ class OntologyManager:
             paths.append(path_with_edges)
             
         return paths
-    
+
+    # Entity information retrieval
     def get_entity_info(self, entity_id: str) -> Dict:
         """
         Get detailed information about an entity.
@@ -247,7 +252,8 @@ class OntologyManager:
             }
         
         return node_data
-    
+
+    # Text Representation Generation
     def get_text_representation(self) -> str:
         """
         Generate a text representation of the ontology for embedding.
@@ -317,7 +323,8 @@ class OntologyManager:
             text_chunks.append(chunk)
         
         return "\n\n".join(text_chunks)
-    
+
+    # Query Retrieval
     def query_by_relationship(self, source_type: str, relationship: str, target_type: str) -> List[Dict]:
         """
         Query for instances connected by a specific relationship.
@@ -357,6 +364,7 @@ class OntologyManager:
         
         return results
 
+    # Semantic context extraction
     def get_semantic_context(self, query: str) -> List[str]:
         """
         Retrieve relevant semantic context from the ontology based on a query.
