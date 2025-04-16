@@ -1,6 +1,5 @@
 ---
 title: Ontology-Enhanced RAG System
-emoji: 🔍
 colorFrom: indigo
 colorTo: blue
 sdk: streamlit
