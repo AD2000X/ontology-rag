@@ -27,7 +27,7 @@ def main():
         ["RAG comparison demonstration", "Knowledge graph visualization", "Ontology structure analysis", "Entity exploration", "Semantic path visualization", "Inference tracking", "Detailed comparative analysis"]
     )
     
-    # # Fix the conditional judgment to make it consistent with the option name
+    # # Display with option name
     if page == "RAG comparison demonstration":
         run_rag_demo()
     elif page == "Knowledge graph visualization":
