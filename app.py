@@ -58,7 +58,7 @@ def run_rag_demo():
             # Traditional RAG
             with col1:
                 st.subheader("Traditional RAG")
-                vector_docs = semantic_retriever.vector_store.similarity_search(query, k=k_val)  # Search related documents based on vector similarity
+                vector_docs = semantic_retriever.vector_store.similarity_search(query, k=k_val)  # Search related documents based on vector similarity. Pure vector similarity search
                 vector_context = "\n\n".join([doc.page_content for doc in vector_docs])  # Merge the retrieved document content into context
                 vector_messages = [
                     {"role": "system", "content": f"You are an enterprise knowledge assistant...\nContext:\n{vector_context}"},
