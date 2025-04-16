@@ -1,5 +1,12 @@
 # src/semantic_retriever.py
 
+# Import type hints for better readability and static checking
+# Import numpy for potential numerical operations (not directly used here)
+# Import OpenAI's embedding model from LangChain's community module
+# Import FAISS vector store for fast similarity search
+# Import Document schema from LangChain for uniform document handling
+# Import the custom OntologyManager that provides semantic context and entity paths
+# Define a class to perform semantic retrieval, combining vector similarity and ontology knowledge
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from langchain_community.embeddings import OpenAIEmbeddings
@@ -15,9 +22,9 @@ class SemanticRetriever:
     # Initialization vector storage
     def __init__(
         self, 
-        ontology_manager: OntologyManager, 
-        embeddings_model = None,
-        text_chunks: Optional[List[str]] = None
+        ontology_manager: OntologyManager,         # required: ontology manager instance
+        embeddings_model = None,                   # optional: embedding model (defaults to OpenAIEmbeddings)
+        text_chunks: Optional[List[str]] = None    # optional: additional text to embed
     ):
         """
         Initialize the semantic retriever.
@@ -27,14 +34,14 @@ class SemanticRetriever:
             embeddings_model: The embeddings model to use (defaults to OpenAIEmbeddings)
             text_chunks: Optional list of text chunks to add to the vector store
         """
-        self.ontology_manager = ontology_manager
-        self.embeddings = embeddings_model or OpenAIEmbeddings()
+        self.ontology_manager = ontology_manager                    # Store ontology manager
+        self.embeddings = embeddings_model or OpenAIEmbeddings()    # Use the provided embedding model or default to OpenAIEmbeddings
         
         # Create a vector store with the text representation of the ontology
-        ontology_text = ontology_manager.get_text_representation()
-        self.ontology_chunks = self._split_text(ontology_text)
+        ontology_text = ontology_manager.get_text_representation()    # Get a text version of the ontology structure for embedding
+        self.ontology_chunks = self._split_text(ontology_text)        # Split the ontology text into chunks (fixed size) for vector indexing
         
-        # Add additional text chunks if provided
+        # If additional text is given, merge it with ontology chunks
         if text_chunks:
             self.text_chunks = text_chunks
             all_chunks = self.ontology_chunks + text_chunks
@@ -42,18 +49,20 @@ class SemanticRetriever:
             self.text_chunks = []
             all_chunks = self.ontology_chunks
         
-        # Convert to Document objects for FAISS
+        # Convert each chunk into a Document object with metadata for FAISS
         documents = [Document(page_content=chunk, metadata={"source": "ontology" if i < len(self.ontology_chunks) else "text"}) 
                     for i, chunk in enumerate(all_chunks)]
         
-        # Create the vector store
+        # Create a FAISS vector store from the documents
         self.vector_store = FAISS.from_documents(documents, self.embeddings)
-    
+
+    # Private helper to split long text into overlapping chunks
     def _split_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
         """Split text into chunks for embedding."""
         chunks = []
         text_length = len(text)
-        
+
+        # Sliding window approach with overlap
         for i in range(0, text_length, chunk_size - overlap):
             chunk = text[i:i + chunk_size]
             if len(chunk) < 50:  # Skip very small chunks
@@ -62,7 +71,7 @@ class SemanticRetriever:
             
         return chunks
 
-    # Hybrid search method, combining vector retrieval and ontology context
+    # Core function: Hybrid search method, combining vector retrieval and ontology context
     def retrieve(self, query: str, k: int = 4, include_ontology_context: bool = True) -> List[Document]:
         """
         Retrieve relevant documents using a hybrid approach.
@@ -81,13 +90,13 @@ class SemanticRetriever:
         else:
             ontology_context = []
         
-        # Perform vector similarity search
+        # Perform vector similarity search, FAISS
         vector_results = self.vector_store.similarity_search(query, k=k)
         
         # Combine results
         combined_results = vector_results
         
-        # Add ontology context as additional documents
+        # Append ontology-derived context as separate documents
         for i, context in enumerate(ontology_context):
             combined_results.append(Document(
                 page_content=context,
@@ -108,7 +117,7 @@ class SemanticRetriever:
         Returns:
             A dictionary containing retrieved documents and semantic paths
         """
-        # Basic retrieval
+        # Basic retrieval, get standard documents using hybrid retrieval
         basic_results = self.retrieve(query, k)
         
         # Extract potential entities from the query (simplified approach)
@@ -125,7 +134,7 @@ class SemanticRetriever:
                     # Just take the first few for demonstration
                     potential_entities.extend(instances[:2])
         
-        # Feature Search
+        # Feature Search, try finding semantic paths between pairs of entities
         paths = []
         if len(potential_entities) >= 2:
             for i in range(len(potential_entities)):
@@ -133,7 +142,7 @@ class SemanticRetriever:
                     source = potential_entities[i]
                     target = potential_entities[j]
                     
-                    # Find paths between these entities
+                    # Find paths between these entities, ask ontology manager to find paths up to 3 steps
                     entity_paths = self.ontology_manager.find_paths(source, target, max_length=3)
                     
                     if entity_paths:
@@ -147,7 +156,7 @@ class SemanticRetriever:
                                 "text": path_text
                             })
         
-        # Convert paths to documents
+        # Wrap each semantic path in a Document
         path_documents = []
         for i, path_info in enumerate(paths):
             path_documents.append(Document(
@@ -159,12 +168,14 @@ class SemanticRetriever:
                     "target_entity": path_info["target"]
                 }
             ))
-        
+
+        # Return both normal documents and enriched path data
         return {
             "documents": basic_results + path_documents,
             "paths": paths
         }
-    
+
+    # Helper to convert a list of RDF-style triples into a readable string
     def _path_to_text(self, path: List[Dict]) -> str:
         """Convert a path to a text description."""
         if not path:
@@ -193,7 +204,8 @@ class SemanticRetriever:
             text_parts.append(f"{source_name} {relation} {target_name}")
         
         return " -> ".join(text_parts)
-    
+
+    # Search entities by class and a property value (like SQL WHERE)
     def search_by_property(self, class_type: str, property_name: str, property_value: str) -> List[Document]:
         """
         Search for instances of a class with a specific property value.
@@ -211,6 +223,7 @@ class SemanticRetriever:
         results = []
         for instance_id in instances:
             entity_info = self.ontology_manager.get_entity_info(instance_id)
+            # Check if the property exists and matches
             if "properties" in entity_info:
                 properties = entity_info["properties"]
                 if property_name in properties:
