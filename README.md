@@ -3,7 +3,6 @@ https://huggingface.co/spaces/AD2000X/Ontology-RAG-Demo
 
 ![Ontology-RAG System](https://github.com/AD2000X/ontology-rag/blob/main/images/pipeline.jpg)
 
-
 ## Project Overview
 
 This repository contains an advanced Retrieval-Augmented Generation (RAG) system that integrates structured ontologies with language models. The system demonstrates how formal ontological knowledge representation can enhance traditional vector-based retrieval methods to provide more accurate, contextually rich, and logically consistent answers to user queries.
@@ -435,3 +434,7 @@ This project demonstrates the integration of ontological knowledge with RAG syst
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+##
+Reference:
+Sharma, K., Kumar, P. and Li, Y., 2024. OG-RAG: Ontology-Grounded Retrieval-Augmented Generation For Large Language Models. arXiv preprint arXiv:2412.15235. Available at: https://arxiv.org/abs/2412.15235 [Accessed 16 Apr. 2025].
